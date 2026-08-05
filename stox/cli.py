@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from datetime import date
 
 from rich.console import Console
 from rich.panel import Panel
@@ -17,7 +18,8 @@ from rich.table import Table
 
 from .config import load_settings
 from .analysis.recommender import analyse_ticker, store_result
-from .analysis.dip import assess_all
+from .analysis.dip import assess_all, DipStatus
+from .notify import load_email_config, send_email
 from .logbook.store import Logbook
 from .logbook.evaluator import run_evaluation, compute_accuracy
 
@@ -153,12 +155,71 @@ def _print_accuracy(book: Logbook) -> None:
 DIP_STYLE = {"geen": "green", "licht": "yellow", "matig": "orange3", "stevig": "bold red"}
 
 
+def _dip_email_body(dips: list[DipStatus]) -> tuple[str, str]:
+    """Bouw (onderwerp, tekst) voor een dip-melding."""
+    deepest = max(dips, key=lambda s: s.depth_pct)
+    subject = (
+        f"stox dip-signaal: {deepest.name} -{deepest.depth_pct:.1f}% "
+        f"({deepest.level} dip)"
+    )
+    lines = ["Een of meer gevolgde fondsen staan onder hun recente top:\n"]
+    for s in dips:
+        lines.append(
+            f"- {s.name} ({s.symbol}): {s.last_close} — "
+            f"{s.depth_pct:.1f}% onder de top van {s.recent_high} "
+            f"({s.high_date}). Niveau: {s.level}. RSI {s.rsi14}."
+        )
+    lines += [
+        "",
+        "Dit kan een moment zijn om je maandelijkse inleg deels extra in te zetten.",
+        "",
+        "— stox is een analysehulpmiddel, geen beleggingsadvies. "
+        "De markt is niet betrouwbaar te voorspellen; jij beslist zelf.",
+    ]
+    return subject, "\n".join(lines)
+
+
+def _maybe_email_dip(dips: list[DipStatus], settings) -> None:
+    """Verstuur een dip-mail, met anti-spam-drempel (nieuwe of diepere dip)."""
+    cfg = load_email_config()
+    if not cfg.is_configured:
+        console.print(
+            "[yellow]E-mail overslaan:[/yellow] geen SMTP-gegevens in .env "
+            "(STOX_SMTP_USER / STOX_SMTP_PASSWORD / STOX_ALERT_TO)."
+        )
+        return
+
+    today = date.today().isoformat()
+    book = Logbook(settings.db_path)
+    to_notify = [
+        s for s in dips if book.should_alert_dip(s.symbol, s.level, today)
+    ]
+    if not to_notify:
+        console.print("[dim]Dip al eerder vandaag gemeld — geen nieuwe e-mail.[/dim]")
+        book.close()
+        return
+
+    subject, body = _dip_email_body(to_notify)
+    try:
+        send_email(cfg, subject, body)
+        for s in to_notify:
+            book.record_dip_alert(s.symbol, s.level, today, s.depth_pct)
+        console.print(f"[green]E-mail verstuurd naar {cfg.recipient}.[/green]")
+    except Exception as exc:
+        console.print(f"[red]E-mail versturen mislukt:[/red] {exc}")
+    finally:
+        book.close()
+
+
 def cmd_dip(args) -> int:
     settings = load_settings()
     name_lookup = {t.symbol: t.name for t in settings.tickers}
     statuses = assess_all(settings.dip, name_lookup)
 
     dips = [s for s in statuses if s.is_dip]
+
+    if args.email and dips:
+        _maybe_email_dip(dips, settings)
 
     # --quiet: geef alleen iets terug als er een dip is (voor cron/e-mail).
     if args.quiet and not dips:
@@ -255,6 +316,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_dip = sub.add_parser("dip", help="Check of de index/ETF-fondsen onder hun recente top staan.")
     p_dip.add_argument("--quiet", action="store_true",
                        help="Geef alleen output als er daadwerkelijk een dip is (voor geplande taken).")
+    p_dip.add_argument("--email", action="store_true",
+                       help="Verstuur een e-mail bij een (nieuwe of diepere) dip.")
     p_dip.set_defaults(func=cmd_dip)
 
     return parser

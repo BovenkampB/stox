@@ -50,7 +50,16 @@ CREATE TABLE IF NOT EXISTS recommendations (
     actual_return_pct REAL,
     correct INTEGER
 );
+CREATE TABLE IF NOT EXISTS dip_alert_log (
+    symbol TEXT PRIMARY KEY,
+    level TEXT,
+    alerted_date TEXT,
+    depth_pct REAL
+);
 """
+
+# Rangorde van dip-niveaus, voor het bepalen of een dip 'dieper' is geworden.
+DIP_LEVEL_RANK = {"geen": 0, "licht": 1, "matig": 2, "stevig": 3}
 
 
 def _now() -> str:
@@ -62,7 +71,7 @@ class Logbook:
         self.db_path = db_path
         self.conn = sqlite3.connect(db_path)
         self.conn.row_factory = sqlite3.Row
-        self.conn.execute(SCHEMA)
+        self.conn.executescript(SCHEMA)  # SCHEMA bevat meerdere statements
         self.conn.commit()
 
     def close(self) -> None:
@@ -105,6 +114,29 @@ class Logbook:
         self.conn.commit()
 
     # -- lezen ------------------------------------------------------------
+    # -- dip-meldingen (anti-spam) ---------------------------------------
+    def should_alert_dip(self, symbol: str, level: str, today: str) -> bool:
+        """Alleen melden bij een nieuwe dip (andere dag) of een diepere dip."""
+        row = self.conn.execute(
+            "SELECT level, alerted_date FROM dip_alert_log WHERE symbol=?", (symbol,)
+        ).fetchone()
+        if row is None:
+            return True
+        if row["alerted_date"] != today:
+            return True
+        return DIP_LEVEL_RANK.get(level, 0) > DIP_LEVEL_RANK.get(row["level"], 0)
+
+    def record_dip_alert(self, symbol: str, level: str, today: str, depth_pct: float) -> None:
+        self.conn.execute(
+            """INSERT INTO dip_alert_log (symbol, level, alerted_date, depth_pct)
+               VALUES (?,?,?,?)
+               ON CONFLICT(symbol) DO UPDATE SET
+                 level=excluded.level, alerted_date=excluded.alerted_date,
+                 depth_pct=excluded.depth_pct""",
+            (symbol, level, today, depth_pct),
+        )
+        self.conn.commit()
+
     def _row_to_rec(self, row: sqlite3.Row) -> Recommendation:
         return Recommendation(
             id=row["id"],

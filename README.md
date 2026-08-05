@@ -48,9 +48,30 @@ python -m stox history
 
 # Bekijk je trefzekerheid
 python -m stox report
+
+# Check of de index/ETF-fondsen onder hun recente top staan (dip-signaal)
+python -m stox dip
 ```
 
 De watchlist pas je aan in [`config/watchlist.yaml`](config/watchlist.yaml).
+
+## Dip-signaal met e-mail
+
+`stox dip` meet hoe ver je index/ETF-fondsen onder hun recente top staan
+(licht ≥3%, matig ≥5%, stevig ≥8%). Handig om je maandelijkse inleg extra in
+te zetten op een terugval. Configureer de fondsen en drempels in het
+`dip_alert`-blok van [`config/watchlist.yaml`](config/watchlist.yaml).
+
+Voor automatische e-mailmeldingen:
+
+1. Zet de SMTP-gegevens in je `.env` (zie [`.env.example`](.env.example)).
+   Voor Gmail heb je een **app-wachtwoord** nodig
+   (https://myaccount.google.com/apppasswords).
+2. Draai `python -m stox dip --quiet --email`. Met `--quiet` gebeurt er niets
+   op het scherm als er geen dip is; `--email` stuurt een mail bij een **nieuwe
+   of diepere** dip (er zit een anti-spam-drempel op, dus geen dubbele mails).
+3. Plan dit commando in met Windows Taakplanner om automatisch te checken
+   (bijv. 3× per handelsdag: 09:30, 13:00 en 17:00).
 
 ## Roadmap
 
