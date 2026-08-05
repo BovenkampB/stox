@@ -51,7 +51,24 @@ python -m stox report
 
 # Check of de index/ETF-fondsen onder hun recente top staan (dip-signaal)
 python -m stox dip
+
+# Volledige dagroutine: evalueer + analyseer alles + toon/mail een samenvatting
+python -m stox daily
 ```
+
+## Dagelijkse samenvatting
+
+`stox daily` doet de volledige dagroutine in één keer:
+
+1. **Evalueert** eerder gedane aanbevelingen waarvan de horizon verstreken is
+   (dit voedt de track record die de nieuwe redenaties meekrijgen).
+2. **Analyseert** de hele watchlist opnieuw en logt de aanbevelingen.
+3. **Mailt** (met `--email`) een samenvatting: actie-signalen bovenaan, dan het
+   volledige overzicht per categorie plus je trefzekerheid tot nu toe.
+
+Met `--category` beperk je de run (handig om te testen of kosten te sparen).
+Plan `python -m stox daily --email` bijvoorbeeld elke werkdag om 08:00 in met
+Windows Taakplanner.
 
 De watchlist pas je aan in [`config/watchlist.yaml`](config/watchlist.yaml).
 

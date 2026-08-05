@@ -152,6 +152,114 @@ def _print_accuracy(book: Logbook) -> None:
     console.print(table)
 
 
+def _daily_summary(results, eval_res, acc) -> tuple[str, str]:
+    """Bouw (onderwerp, tekst) voor de dagelijkse samenvattingsmail."""
+    from collections import Counter
+
+    counts = Counter(r.reasoning.signal for r in results)
+    buy, sell, hold = counts.get("buy", 0), counts.get("sell", 0), counts.get("hold", 0)
+    datestr = date.today().strftime("%d-%m-%Y")
+    subject = f"stox dagelijks: {buy} kopen, {sell} verkopen, {hold} aanhouden ({datestr})"
+
+    lines = [f"stox dagelijkse samenvatting — {datestr}", ""]
+    if eval_res.evaluated:
+        lines.append(
+            f"Vandaag geëvalueerd: {eval_res.evaluated} eerdere aanbevelingen, "
+            f"waarvan {eval_res.correct} correct."
+        )
+    if acc.total:
+        lines.append(
+            f"Trefzekerheid tot nu toe: {acc.correct}/{acc.total} ({acc.hit_rate:.0f}%)."
+        )
+    lines.append("")
+
+    actionable = [r for r in results if r.reasoning.signal in ("buy", "sell")]
+    if actionable:
+        lines.append("== Signalen die om aandacht vragen ==")
+        for r in sorted(actionable, key=lambda r: -r.reasoning.confidence):
+            lab = SIGNAL_LABEL[r.reasoning.signal]
+            lines.append(
+                f"[{lab}] {r.ticker.name} ({r.ticker.symbol}) — "
+                f"zekerheid {r.reasoning.confidence:.0%}, koers {r.tech.last_close}"
+            )
+            if r.reasoning.rationale:
+                lines.append(f"    {r.reasoning.rationale}")
+        lines.append("")
+
+    lines.append("== Volledig overzicht ==")
+    current = None
+    for r in results:
+        if r.ticker.category != current:
+            current = r.ticker.category
+            lines.append(f"\n{current}:")
+        lab = SIGNAL_LABEL[r.reasoning.signal]
+        lines.append(
+            f"  {lab:9s} {r.ticker.symbol:10s} {r.tech.last_close:>9}  "
+            f"(zekerheid {r.reasoning.confidence:.0%})"
+        )
+
+    lines += [
+        "",
+        "— stox is een analysehulpmiddel, geen beleggingsadvies. "
+        "De markt is niet betrouwbaar te voorspellen; jij beslist zelf.",
+    ]
+    return subject, "\n".join(lines)
+
+
+def cmd_daily(args) -> int:
+    settings = load_settings()
+    if not settings.anthropic_api_key:
+        console.print("[yellow]Let op:[/yellow] geen ANTHROPIC_API_KEY — regelgebaseerde modus.")
+
+    tickers = settings.tickers
+    if args.category:
+        needle = args.category.lower()
+        tickers = [t for t in tickers if needle in t.category.lower()]
+        if not tickers:
+            console.print(f"[red]Geen categorie die matcht op '{args.category}'.[/red]")
+            return 1
+
+    book = Logbook(settings.db_path)
+
+    # 1. Evalueer verstreken aanbevelingen (voedt de track record voor de nieuwe ronde).
+    eval_res = run_evaluation(book)
+
+    # 2. Analyseer en log.
+    results = []
+    current_category = None
+    for ticker in tickers:
+        if ticker.category != current_category:
+            current_category = ticker.category
+            console.rule(f"[bold]{current_category}[/bold]")
+        console.print(f"Analyseren: [cyan]{ticker.name}[/cyan] ({ticker.symbol}) …")
+        result = analyse_ticker(ticker, settings, book)
+        if result is None:
+            console.print(f"  [red]Onvoldoende data voor {ticker.symbol}.[/red]")
+            continue
+        store_result(result, book)
+        results.append(result)
+
+    acc = compute_accuracy(book)
+    subject, body = _daily_summary(results, eval_res, acc)
+
+    # 3. Mail of toon.
+    if args.email:
+        cfg = load_email_config()
+        if not cfg.is_configured:
+            console.print("[yellow]E-mail overslaan:[/yellow] geen SMTP-gegevens in .env.")
+        else:
+            try:
+                send_email(cfg, subject, body)
+                console.print(f"[green]Samenvatting gemaild naar {cfg.recipient}.[/green]")
+            except Exception as exc:
+                console.print(f"[red]E-mail versturen mislukt:[/red] {exc}")
+
+    console.print()
+    console.print(Panel(body, title="Dagelijkse samenvatting", border_style="cyan"))
+    book.close()
+    return 0
+
+
 DIP_STYLE = {"geen": "green", "licht": "yellow", "matig": "orange3", "stevig": "bold red"}
 
 
@@ -355,6 +463,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_re = sub.add_parser("report", help="Toon trefzekerheid / statistieken.")
     p_re.set_defaults(func=cmd_report)
+
+    p_daily = sub.add_parser("daily", help="Volledige dagroutine: evalueer + analyseer alles + mail samenvatting.")
+    p_daily.add_argument("--email", action="store_true", help="Mail de dagelijkse samenvatting.")
+    p_daily.add_argument("--category", help="Beperk tot een categorie (handig om te testen/kosten te sparen).")
+    p_daily.set_defaults(func=cmd_daily)
 
     p_dip = sub.add_parser("dip", help="Check of de index/ETF-fondsen onder hun recente top staan.")
     p_dip.add_argument("--quiet", action="store_true",
