@@ -490,13 +490,19 @@ def cmd_dashboard(args) -> int:
 
     settings = load_settings()
     app = create_app(settings)
-    url = f"http://{args.host}:{args.port}"
+    display_host = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
+    local_url = f"http://{display_host}:{args.port}"
     console.print(
-        f"[green]Stoxxx dashboard[/green] draait op [b]{url}[/b]  "
+        f"[green]Stoxxx dashboard[/green] draait op [b]{local_url}[/b]  "
         "(read-only · Ctrl+C om te stoppen)"
     )
+    if args.host not in ("127.0.0.1", "localhost"):
+        console.print(
+            f"[dim]Ook bereikbaar op je netwerk/Tailscale via poort {args.port} "
+            f"— open bijv. http://<tailscale-ip>:{args.port} op je tablet.[/dim]"
+        )
     if not args.no_browser:
-        threading.Timer(1.0, lambda: webbrowser.open(url)).start()
+        threading.Timer(1.0, lambda: webbrowser.open(local_url)).start()
     app.run(host=args.host, port=args.port, debug=False)
     return 0
 

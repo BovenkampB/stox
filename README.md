@@ -82,6 +82,35 @@ Opties: `--port`, `--host`, `--no-browser`. Draait op de Flask dev-server; voor
 een permanente opstelling (bijv. Raspberry Pi) kun je later een WSGI-server zoals
 waitress gebruiken.
 
+### Bekijken op je tablet/telefoon (via Tailscale)
+
+Het dashboard is responsive en werkt prima op een tablet. Om het vanaf een ander
+apparaat te bekijken, bied je het aan binnen je eigen Tailscale-netwerk (tailnet) —
+versleuteld en alleen bereikbaar voor je eigen apparaten.
+
+**Optie A — binden aan je Tailscale-IP (simpel):**
+
+```bash
+python -m stox dashboard --host <tailscale-ip-van-je-pc>
+```
+
+Open daarna op je tablet `http://<tailscale-ip-van-je-pc>:8000`. Door aan het
+Tailscale-IP te binden (i.p.v. `0.0.0.0`) is het dashboard alléén via je tailnet
+bereikbaar, niet via je gewone wifi/LAN.
+
+**Optie B — Tailscale Serve met HTTPS (netter):** laat het dashboard op localhost
+draaien en zet er Tailscale voor:
+
+```bash
+tailscale serve --bg 8000
+```
+
+Je bereikt het dan op `https://<pc-naam>.<jouw-tailnet>.ts.net` — met een geldig
+certificaat en zonder firewall-aanpassingen. Stoppen: `tailscale serve --https=443 off`.
+
+> Windows-firewall kan de eerste keer om toestemming vragen om Python via het
+> netwerk te laten communiceren — sta dat toe (privé netwerk).
+
 ## Dagelijkse samenvatting
 
 `stox daily` doet de volledige dagroutine in één keer:
