@@ -138,14 +138,16 @@ ul.sources li a:hover { color: var(--blue); }
 .sw.green { background: var(--green); } .sw.sma20 { background: var(--sma20); } .sw.sma50 { background: var(--sma50); } .sw.sma200 { background: var(--sma200); }
 canvas.spark { display: block; }
 
-/* ---- Range-filter onder de grafiek ---- */
-.range-filter { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
-.range-filter button {
+/* ---- Range- en indicator-filter onder de grafiek ---- */
+.range-filter, .indicator-filter { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+.range-filter button, .indicator-filter button {
   background: var(--panel-2); color: var(--muted); border: 1px solid var(--border);
   border-radius: 6px; padding: 4px 12px; font-size: .8rem; font-weight: 600; cursor: pointer;
 }
-.range-filter button:hover { color: var(--text); border-color: var(--muted); }
+.range-filter button:hover, .indicator-filter button:hover { color: var(--text); border-color: var(--muted); }
 .range-filter button.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+.indicator-filter .filter-label { color: var(--muted); font-size: .78rem; margin-right: 2px; }
+.indicator-filter button.active { background: rgba(76,155,232,.18); color: var(--blue); border-color: rgba(76,155,232,.5); }
 
 /* ---- Report ---- */
 .stat-row { display: flex; gap: 16px; margin-bottom: 20px; }

@@ -235,14 +235,71 @@ def _entry_status(close) -> dict:
     return {"level": level, "depth_pct": round(depth, 1), "drawdown_pct": round(drawdown, 1)}
 
 
+# ------------------------------------------------------- indicatorreeksen ---
+_GREEN, _RED = "#16c784", "#ea3943"
+
+
+def _bollinger(close, window: int = 20, k: float = 2.0):
+    mid = close.rolling(window).mean()
+    std = close.rolling(window).std()
+    return mid + k * std, mid, mid - k * std
+
+
+def _rsi_series(close, window: int = 14):
+    delta = close.diff()
+    gain = delta.clip(lower=0).rolling(window).mean()
+    loss = (-delta.clip(upper=0)).rolling(window).mean()
+    rs = gain / loss.replace(0, float("nan"))
+    return 100 - (100 / (1 + rs))
+
+
+def _macd_series(close):
+    ema12 = close.ewm(span=12, adjust=False).mean()
+    ema26 = close.ewm(span=26, adjust=False).mean()
+    macd = ema12 - ema26
+    signal = macd.ewm(span=9, adjust=False).mean()
+    return macd, signal, macd - signal
+
+
+def _fmt_line(series, keyfn, mask=None, nd: int = 2):
+    if mask is not None:
+        series = series[mask]
+    s = series.dropna()
+    return [{"time": keyfn(t), "value": round(float(v), nd)} for t, v in s.items()]
+
+
+def _fmt_hist(series, keyfn, mask=None, nd: int = 4):
+    if mask is not None:
+        series = series[mask]
+    s = series.dropna()
+    return [{"time": keyfn(t), "value": round(float(v), nd),
+             "color": _GREEN if v >= 0 else _RED} for t, v in s.items()]
+
+
+def _indicators(close, keyfn, mask=None) -> dict:
+    bb_u, bb_m, bb_l = _bollinger(close)
+    macd_l, macd_s, macd_h = _macd_series(close)
+    return {
+        "bb_upper": _fmt_line(bb_u, keyfn, mask), "bb_middle": _fmt_line(bb_m, keyfn, mask),
+        "bb_lower": _fmt_line(bb_l, keyfn, mask),
+        "rsi": _fmt_line(_rsi_series(close), keyfn, mask, nd=1),
+        "macd": _fmt_line(macd_l, keyfn, mask, nd=4),
+        "macd_signal": _fmt_line(macd_s, keyfn, mask, nd=4),
+        "macd_hist": _fmt_hist(macd_h, keyfn, mask, nd=4),
+    }
+
+
 # ------------------------------------------------------------- prijsreeks ---
 _RANGE_DAILY_DAYS = {"1mo": 31, "6mo": 190, "1y": 370}   # zichtbaar venster in dagen
 _RANGE_INTRADAY = {"1d": ("1d", "5m"), "5d": ("5d", "30m")}
+_EMPTY_INDICATORS = {k: [] for k in
+                     ("bb_upper", "bb_middle", "bb_lower", "rsi", "macd", "macd_signal", "macd_hist")}
 
 
 def _empty_series() -> dict:
     return {"candles": [], "sma20": [], "sma50": [], "sma200": [], "last_close": None,
-            "entry": {"level": "none", "depth_pct": 0.0, "drawdown_pct": 0.0}}
+            "entry": {"level": "none", "depth_pct": 0.0, "drawdown_pct": 0.0},
+            **_EMPTY_INDICATORS}
 
 
 def _daily_series(symbol: str, rng: str) -> dict:
@@ -259,21 +316,20 @@ def _daily_series(symbol: str, rng: str) -> dict:
     else:
         start = last_date - pd.Timedelta(days=_RANGE_DAILY_DAYS.get(rng, 190))
     mask = df.index >= start
-
-    def _line(series):
-        s = series[mask].dropna()
-        return [{"time": t.strftime("%Y-%m-%d"), "value": round(float(v), 2)} for t, v in s.items()]
+    key = lambda t: t.strftime("%Y-%m-%d")  # noqa: E731
 
     vis = df[mask]
     candles = [
-        {"time": t.strftime("%Y-%m-%d"),
+        {"time": key(t),
          "open": round(float(row.Open), 2), "high": round(float(row.High), 2),
          "low": round(float(row.Low), 2), "close": round(float(row.Close), 2)}
         for t, row in vis.iterrows()
     ]
-    return {"candles": candles, "sma20": _line(sma20), "sma50": _line(sma50),
-            "sma200": _line(sma200), "last_close": round(float(close.iloc[-1]), 2),
-            "entry": _entry_status(close)}
+    return {"candles": candles,
+            "sma20": _fmt_line(sma20, key, mask), "sma50": _fmt_line(sma50, key, mask),
+            "sma200": _fmt_line(sma200, key, mask),
+            "last_close": round(float(close.iloc[-1]), 2), "entry": _entry_status(close),
+            **_indicators(close, key, mask)}
 
 
 def _intraday_series(symbol: str, rng: str) -> dict:
@@ -282,21 +338,24 @@ def _intraday_series(symbol: str, rng: str) -> dict:
     hist = hist.dropna(subset=["Close"])
     if hist.empty:
         return {"candles": [], "sma20": [], "sma50": [], "sma200": [],
-                "last_close": None, "entry": None}
+                "last_close": None, "entry": None, **_EMPTY_INDICATORS}
+    key = lambda t: int(t.timestamp())  # noqa: E731  (UTC-seconden, tz-correct)
     candles = [
-        {"time": int(row.Index.timestamp()),  # UTC-seconden (tz-correct) voor intraday
+        {"time": int(row.Index.timestamp()),
          "open": round(float(row.Open), 2), "high": round(float(row.High), 2),
          "low": round(float(row.Low), 2), "close": round(float(row.Close), 2)}
         for row in hist.itertuples()
     ]
     return {"candles": candles, "sma20": [], "sma50": [], "sma200": [],
-            "last_close": round(float(hist["Close"].iloc[-1]), 2), "entry": None}
+            "last_close": round(float(hist["Close"].iloc[-1]), 2), "entry": None,
+            **_indicators(hist["Close"], key)}
 
 
 def price_series(symbol: str, rng: str = "6mo") -> dict:
-    """Koersdata voor de grafiek: candles + SMA20/50/200 (+ instapkans).
+    """Koersdata voor de grafiek: candles + SMA's + Bollinger/RSI/MACD (+ instapkans).
 
-    Dagbereiken (1mo/6mo/ytd/1y) tonen SMA-lijnen; intraday (1d/5d) alleen candles.
+    Dagbereiken (1mo/6mo/ytd/1y) tonen dag-SMA's; intraday (1d/5d) alleen candles.
+    Bollinger/RSI/MACD worden voor alle bereiken meegeleverd (frontend toont ze op verzoek).
     """
     if rng in _RANGE_INTRADAY:
         return _intraday_series(symbol, rng)
