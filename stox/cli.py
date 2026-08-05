@@ -184,7 +184,11 @@ def _daily_summary(results, eval_res, acc) -> tuple[str, str]:
             )
             if r.reasoning.rationale:
                 lines.append(f"    {r.reasoning.rationale}")
-        lines.append("")
+            if r.news:
+                lines.append("    Bronnen:")
+                for n in r.news[:4]:
+                    lines.append(f"      - {n.title} ({n.source}) {n.link}")
+            lines.append("")
 
     lines.append("== Volledig overzicht ==")
     current = None
@@ -413,6 +417,39 @@ def cmd_dip(args) -> int:
     return 0
 
 
+def cmd_sources(args) -> int:
+    settings = load_settings()
+    book = Logbook(settings.db_path)
+    recs = book.for_symbol(args.symbol.upper(), only_evaluated=False)
+    if not recs:
+        console.print(f"[yellow]Geen aanbevelingen voor {args.symbol} in het logboek.[/yellow]")
+        book.close()
+        return 0
+
+    for r in recs[: args.limit]:
+        console.rule(
+            f"#{r.id}  {r.name} ({r.symbol}) — "
+            f"{SIGNAL_LABEL.get(r.signal, r.signal)} ({r.confidence:.0%}) — {r.created_at[:10]}"
+        )
+        if r.rationale:
+            console.print(f"[b]Redenatie:[/b] {r.rationale}\n")
+        if r.sources:
+            console.print("[b]Gebruikte bronnen:[/b]")
+            for s in r.sources:
+                meta = " · ".join(x for x in [s.get("published", ""), s.get("source", "")] if x)
+                console.print(f"  • [{meta}] {s.get('title', '')}")
+                if s.get("link"):
+                    console.print(f"    [dim]{s['link']}[/dim]")
+        else:
+            console.print(
+                "[dim]Geen bronnen opgeslagen bij deze aanbeveling "
+                "(van vóór de bron-opslag, of regelgebaseerde modus zonder nieuws).[/dim]"
+            )
+        console.print()
+    book.close()
+    return 0
+
+
 def cmd_history(args) -> None:
     settings = load_settings()
     book = Logbook(settings.db_path)
@@ -463,6 +500,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_re = sub.add_parser("report", help="Toon trefzekerheid / statistieken.")
     p_re.set_defaults(func=cmd_report)
+
+    p_src = sub.add_parser("sources", help="Toon de nieuwsbronnen achter aanbevelingen voor een ticker.")
+    p_src.add_argument("symbol", help="Ticker, bijv. KTOS of ASML.AS")
+    p_src.add_argument("--limit", type=int, default=1,
+                       help="Aantal recente aanbevelingen om te tonen (standaard 1).")
+    p_src.set_defaults(func=cmd_sources)
 
     p_daily = sub.add_parser("daily", help="Volledige dagroutine: evalueer + analyseer alles + mail samenvatting.")
     p_daily.add_argument("--email", action="store_true", help="Mail de dagelijkse samenvatting.")

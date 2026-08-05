@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -22,6 +22,8 @@ class Recommendation:
     key_factors: list[str]
     risks: list[str]
     source: str
+    # Gebruikte nieuwsbronnen: lijst van {title, source, published, link}.
+    sources: list[dict] = field(default_factory=list)
     # Evaluatievelden (leeg tot de horizon verstreken is):
     evaluated: int = 0
     evaluated_at: str | None = None
@@ -44,6 +46,7 @@ CREATE TABLE IF NOT EXISTS recommendations (
     key_factors TEXT,
     risks TEXT,
     source TEXT,
+    sources TEXT,
     evaluated INTEGER DEFAULT 0,
     evaluated_at TEXT,
     price_at_eval REAL,
@@ -72,7 +75,14 @@ class Logbook:
         self.conn = sqlite3.connect(db_path)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)  # SCHEMA bevat meerdere statements
+        self._migrate()
         self.conn.commit()
+
+    def _migrate(self) -> None:
+        """Voeg kolommen toe die in oudere databases nog ontbreken."""
+        cols = {row[1] for row in self.conn.execute("PRAGMA table_info(recommendations)")}
+        if "sources" not in cols:
+            self.conn.execute("ALTER TABLE recommendations ADD COLUMN sources TEXT")
 
     def close(self) -> None:
         self.conn.close()
@@ -82,8 +92,8 @@ class Logbook:
         cur = self.conn.execute(
             """INSERT INTO recommendations
                (created_at, symbol, name, signal, confidence, horizon_days,
-                price_at_reco, rationale, key_factors, risks, source)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                price_at_reco, rationale, key_factors, risks, source, sources)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 rec.created_at or _now(),
                 rec.symbol,
@@ -96,6 +106,7 @@ class Logbook:
                 json.dumps(rec.key_factors, ensure_ascii=False),
                 json.dumps(rec.risks, ensure_ascii=False),
                 rec.source,
+                json.dumps(rec.sources, ensure_ascii=False),
             ),
         )
         self.conn.commit()
@@ -151,6 +162,7 @@ class Logbook:
             key_factors=json.loads(row["key_factors"] or "[]"),
             risks=json.loads(row["risks"] or "[]"),
             source=row["source"] or "",
+            sources=json.loads(row["sources"] or "[]") if "sources" in row.keys() else [],
             evaluated=row["evaluated"],
             evaluated_at=row["evaluated_at"],
             price_at_eval=row["price_at_eval"],

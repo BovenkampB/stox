@@ -60,5 +60,10 @@ def store_result(result: AnalysisResult, book: Logbook) -> int:
         key_factors=result.reasoning.key_factors,
         risks=result.reasoning.risks,
         source=result.reasoning.source,
+        sources=[
+            {"title": n.title, "source": n.source,
+             "published": n.published, "link": n.link}
+            for n in result.news
+        ],
     )
     return book.add(rec)

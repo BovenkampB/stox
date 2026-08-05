@@ -54,6 +54,9 @@ python -m stox dip
 
 # Volledige dagroutine: evalueer + analyseer alles + toon/mail een samenvatting
 python -m stox daily
+
+# Toon de nieuwsbronnen achter de laatste aanbeveling voor een ticker
+python -m stox sources KTOS
 ```
 
 ## Dagelijkse samenvatting
@@ -71,6 +74,14 @@ Plan `python -m stox daily --email` bijvoorbeeld elke werkdag om 08:00 in met
 Windows Taakplanner.
 
 De watchlist pas je aan in [`config/watchlist.yaml`](config/watchlist.yaml).
+
+## Herkomst van aanbevelingen (bronnen)
+
+Elke aanbeveling slaat de gebruikte nieuwsartikelen op (titel, uitgever, datum,
+link), zodat je achteraf altijd kunt zien waaróp een advies stoelde — ook als
+dat nieuws later is weggezakt. Bekijk ze met `python -m stox sources <TICKER>`
+(bijv. `sources KTOS`). In de dagelijkse mail staan de bronnen onder elk
+koop-/verkoopsignaal.
 
 ## Dip-signaal met e-mail
 
