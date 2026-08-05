@@ -33,8 +33,16 @@ tickers:
   - { symbol: TSM,   name: TSMC,              category: "US Tech", region: US }
 
   # ============ Consument & Zorg ============
-  - { symbol: CPB, name: Campbell's, category: "Consument & Zorg", region: US }
-  - { symbol: ZTS, name: Zoetis,     category: "Consument & Zorg", region: US }
+  - { symbol: CPB,     name: Campbell's,          category: "Consument & Zorg", region: US }
+  - { symbol: ZTS,     name: Zoetis,              category: "Consument & Zorg", region: US }
+  - { symbol: NVO,     name: Novo Nordisk,        category: "Consument & Zorg", region: US }
+  - { symbol: LLY,     name: Eli Lilly,           category: "Consument & Zorg", region: US }
+  - { symbol: UNH,     name: UnitedHealth,        category: "Consument & Zorg", region: US }
+  - { symbol: JNJ,     name: Johnson & Johnson,   category: "Consument & Zorg", region: US }
+  - { symbol: PFE,     name: Pfizer,              category: "Consument & Zorg", region: US }
+  - { symbol: PHIA.AS, name: Philips,             category: "Consument & Zorg", region: EU }
+  - { symbol: TMO,     name: Thermo Fisher,       category: "Consument & Zorg", region: US }
+  - { symbol: ISRG,    name: Intuitive Surgical,  category: "Consument & Zorg", region: US }
 
   # ============ Defensie & Drones ============
   - { symbol: AVAV,      name: AeroVironment,   category: "Defensie & Drones", region: US }
