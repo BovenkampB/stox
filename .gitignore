@@ -1,0 +1,18 @@
+# Geheimen
+.env
+
+# Lokale Claude Code-instellingen
+.claude/
+
+# Runtime data (logboek, cache)
+/data/
+*.db
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/

@@ -1,0 +1,212 @@
+"""stox command-line interface.
+
+Commando's:
+  analyze   Analyseer de watchlist en log aanbevelingen.
+  evaluate  Check verstreken aanbevelingen tegen de werkelijke koers (leerlus).
+  history   Toon eerdere aanbevelingen.
+  report    Toon trefzekerheid / statistieken.
+"""
+from __future__ import annotations
+
+import argparse
+import sys
+
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+
+from .config import load_settings
+from .analysis.recommender import analyse_ticker, store_result
+from .logbook.store import Logbook
+from .logbook.evaluator import run_evaluation, compute_accuracy
+
+console = Console()
+
+DISCLAIMER = (
+    "[dim]stox is een analysehulpmiddel, geen beleggingsadvies. "
+    "Aanbevelingen zijn benaderingen; de markt is niet betrouwbaar te voorspellen. "
+    "Jij beslist zelf.[/dim]"
+)
+
+SIGNAL_STYLE = {"buy": "bold green", "sell": "bold red", "hold": "yellow"}
+SIGNAL_LABEL = {"buy": "KOPEN", "sell": "VERKOPEN", "hold": "AANHOUDEN"}
+
+
+def cmd_analyze(args) -> None:
+    settings = load_settings()
+    book = Logbook(settings.db_path)
+
+    if not settings.anthropic_api_key:
+        console.print(
+            "[yellow]Let op:[/yellow] geen ANTHROPIC_API_KEY gevonden — "
+            "de app draait in regelgebaseerde modus (nieuws wordt niet meegewogen). "
+            "Vul .env in voor de volledige AI-redenatie.\n"
+        )
+
+    tickers = settings.tickers
+    if args.symbol:
+        tickers = [t for t in tickers if t.symbol.upper() == args.symbol.upper()]
+        if not tickers:
+            console.print(f"[red]Ticker {args.symbol} staat niet in de watchlist.[/red]")
+            return
+
+    for ticker in tickers:
+        console.print(f"Analyseren: [cyan]{ticker.name}[/cyan] ({ticker.symbol}) …")
+        result = analyse_ticker(ticker, settings, book)
+        if result is None:
+            console.print(f"  [red]Onvoldoende koersdata voor {ticker.symbol}.[/red]")
+            continue
+
+        rec_id = store_result(result, book)
+        _print_result(result, rec_id)
+
+    console.print(DISCLAIMER)
+    book.close()
+
+
+def _print_result(result, rec_id: int) -> None:
+    r = result.reasoning
+    t = result.tech
+    style = SIGNAL_STYLE.get(r.signal, "white")
+    label = SIGNAL_LABEL.get(r.signal, r.signal.upper())
+
+    body = [
+        f"[{style}]{label}[/{style}]  "
+        f"(zekerheid {r.confidence:.0%}, horizon {r.horizon_days} dagen, bron: {r.source})",
+        "",
+        f"[b]Koers:[/b] {t.last_close}  |  1w {t.change_1w_pct:+.1f}%  "
+        f"1m {t.change_1m_pct:+.1f}%  3m {t.change_3m_pct:+.1f}%",
+        f"[b]Grafiek:[/b] trend {t.trend}, RSI {t.rsi14} ({t.rsi_signal}), "
+        f"MACD {t.macd_state}, support {t.support} / resistance {t.resistance}",
+        "",
+        f"[b]Redenatie:[/b] {r.rationale}",
+    ]
+    if r.key_factors:
+        body.append("\n[b]Belangrijkste factoren:[/b]")
+        body += [f"  • {f}" for f in r.key_factors]
+    if r.risks:
+        body.append("\n[b]Risico's:[/b]")
+        body += [f"  • {f}" for f in r.risks]
+
+    console.print(
+        Panel(
+            "\n".join(body),
+            title=f"#{rec_id}  {result.ticker.name} ({result.ticker.symbol})",
+            border_style=style.split()[-1],
+        )
+    )
+
+
+def cmd_evaluate(args) -> None:
+    settings = load_settings()
+    book = Logbook(settings.db_path)
+    console.print("Verstreken aanbevelingen evalueren tegen de actuele koers …\n")
+    res = run_evaluation(book)
+    console.print(
+        f"Geëvalueerd: [b]{res.evaluated}[/b]  |  "
+        f"waarvan correct: [b]{res.correct}[/b]  |  "
+        f"nog niet rijp: {res.skipped_not_mature}\n"
+    )
+    _print_accuracy(book)
+    book.close()
+
+
+def cmd_report(args) -> None:
+    settings = load_settings()
+    book = Logbook(settings.db_path)
+    _print_accuracy(book)
+    book.close()
+
+
+def _print_accuracy(book: Logbook) -> None:
+    acc = compute_accuracy(book)
+    if acc.total == 0:
+        console.print("[dim]Nog geen geëvalueerde aanbevelingen. "
+                      "Draai eerst 'analyze' en later 'evaluate'.[/dim]")
+        return
+    table = Table(title="Trefzekerheid (geëvalueerde aanbevelingen)")
+    table.add_column("Signaal")
+    table.add_column("Correct", justify="right")
+    table.add_column("Totaal", justify="right")
+    table.add_column("Percentage", justify="right")
+    for sig, (c, tot) in acc.by_signal.items():
+        if tot:
+            table.add_row(sig, str(c), str(tot), f"{c / tot * 100:.0f}%")
+    table.add_row("[b]TOTAAL[/b]", f"[b]{acc.correct}[/b]", f"[b]{acc.total}[/b]",
+                  f"[b]{acc.hit_rate:.0f}%[/b]")
+    console.print(table)
+
+
+def cmd_history(args) -> None:
+    settings = load_settings()
+    book = Logbook(settings.db_path)
+    recs = book.all(limit=args.limit)
+    if not recs:
+        console.print("[dim]Logboek is leeg.[/dim]")
+        book.close()
+        return
+    table = Table(title="Aanbevelingen-logboek")
+    table.add_column("#", justify="right")
+    table.add_column("Datum")
+    table.add_column("Ticker")
+    table.add_column("Signaal")
+    table.add_column("Koers", justify="right")
+    table.add_column("Status")
+    table.add_column("Resultaat", justify="right")
+    for r in recs:
+        if r.evaluated:
+            mark = "✓" if r.correct else "✗"
+            status = f"{mark} geëvalueerd"
+            outcome = f"{r.actual_return_pct:+.1f}%" if r.actual_return_pct is not None else "-"
+        else:
+            status = "wacht"
+            outcome = "-"
+        table.add_row(
+            str(r.id), r.created_at[:10], r.symbol,
+            SIGNAL_LABEL.get(r.signal, r.signal), f"{r.price_at_reco}", status, outcome,
+        )
+    console.print(table)
+    book.close()
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="stox", description="Transparante aandelen-analyse.")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_an = sub.add_parser("analyze", help="Analyseer de watchlist en log aanbevelingen.")
+    p_an.add_argument("--symbol", help="Analyseer slechts één ticker uit de watchlist.")
+    p_an.set_defaults(func=cmd_analyze)
+
+    p_ev = sub.add_parser("evaluate", help="Evalueer verstreken aanbevelingen (leerlus).")
+    p_ev.set_defaults(func=cmd_evaluate)
+
+    p_hi = sub.add_parser("history", help="Toon het logboek.")
+    p_hi.add_argument("--limit", type=int, default=30)
+    p_hi.set_defaults(func=cmd_history)
+
+    p_re = sub.add_parser("report", help="Toon trefzekerheid / statistieken.")
+    p_re.set_defaults(func=cmd_report)
+
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    # Forceer UTF-8 op Windows-consoles zodat •, … en accenten goed tonen.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError):
+            pass
+
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        args.func(args)
+    except KeyboardInterrupt:
+        console.print("\n[dim]Afgebroken.[/dim]")
+        return 130
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

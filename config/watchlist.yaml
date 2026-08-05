@@ -1,0 +1,39 @@
+# De aandelen die stox volgt. Voeg gerust toe of verwijder.
+# 'symbol' is het ticker-symbool zoals yfinance het kent:
+#   - Euronext Amsterdam eindigt op .AS  (bijv. ASML.AS)
+#   - Amerikaanse beurzen hebben geen achtervoegsel (bijv. TSLA)
+
+# Standaard horizon (in dagen) waarop een aanbeveling wordt geëvalueerd.
+default_horizon_days: 14
+
+tickers:
+  # --- Nederlandse / EU aandelen ---
+  - symbol: ASML.AS
+    name: ASML Holding
+    region: EU
+  - symbol: ADYEN.AS
+    name: Adyen
+    region: EU
+  - symbol: BESI.AS
+    name: BE Semiconductor
+    region: EU
+  - symbol: SHELL.AS
+    name: Shell
+    region: EU
+  - symbol: INGA.AS
+    name: ING Groep
+    region: EU
+
+  # --- Amerikaanse tech ---
+  - symbol: TSLA
+    name: Tesla
+    region: US
+  - symbol: NVDA
+    name: Nvidia
+    region: US
+  - symbol: AAPL
+    name: Apple
+    region: US
+  - symbol: MSFT
+    name: Microsoft
+    region: US
