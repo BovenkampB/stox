@@ -29,7 +29,8 @@ def analyse_ticker(
     if tech is None:
         return None
 
-    news = fetch_news(ticker.name)
+    kind = "crypto" if "crypto" in ticker.category.lower() else "stock"
+    news = fetch_news(ticker.name, kind=kind)
     track = track_record_text(book, ticker.symbol) if book else None
 
     reasoning = reason(

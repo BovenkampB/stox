@@ -70,6 +70,8 @@ het logboek — het draait geen nieuwe analyses en kost dus geen API-credits.
 
 - **Overzicht** — alle getrackte aandelen, gesorteerd op koopadvies, met een
   sparkline per aandeel; filter op categorie.
+- **Crypto** — dezelfde weergave voor de populairste cryptomunten (BTC, ETH, …),
+  die via dezelfde pijplijn worden geanalyseerd.
 - **Detail** (klik een aandeel) — de volledige redenatie, de gebruikte bronnen,
   een candlestick-grafiek (rood/groen, met SMA20/SMA50) en doorklik-links naar
   TradingView en DEGIRO, plus de adviezenhistorie.

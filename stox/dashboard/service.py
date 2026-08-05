@@ -11,6 +11,7 @@ from . import cache
 
 SIGNAL_LABEL = {"buy": "KOPEN", "sell": "VERKOPEN", "hold": "AANHOUDEN", "none": "—"}
 SIGNAL_RANK = {"buy": 0, "hold": 1, "sell": 2, "none": 3}
+CRYPTO_CATEGORY = "Crypto"
 
 
 # ---------------------------------------------------------------- helpers ---
@@ -38,11 +39,15 @@ def _rec_row(rec: Recommendation) -> dict:
 
 
 # --------------------------------------------------------------- overview ---
-def overview_rows(settings: Settings, book: Logbook, category: str | None = None) -> list[dict]:
+def overview_rows(settings: Settings, book: Logbook, category: str | None = None,
+                  exclude: list[str] | None = None) -> list[dict]:
     latest = latest_by_symbol(book)
+    excluded = set(exclude or [])
     rows: list[dict] = []
     for t in settings.tickers:
         if category and t.category != category:
+            continue
+        if t.category in excluded:
             continue
         rec = latest.get(t.symbol)
         signal = rec.signal if rec else "none"
@@ -61,9 +66,12 @@ def overview_rows(settings: Settings, book: Logbook, category: str | None = None
     return rows
 
 
-def categories(settings: Settings) -> list[str]:
+def categories(settings: Settings, exclude: list[str] | None = None) -> list[str]:
+    excluded = set(exclude or [])
     seen: list[str] = []
     for t in settings.tickers:
+        if t.category in excluded:
+            continue
         if t.category not in seen:
             seen.append(t.category)
     return seen
@@ -176,7 +184,14 @@ def logbook_rows(book: Logbook, limit: int = 500) -> list[dict]:
 _TV_PREFIX = {".AS": "EURONEXT", ".DE": "XETR", ".MI": "MIL", ".ST": "OMXSTO"}
 
 
-def external_links(symbol: str) -> dict[str, str]:
+def external_links(symbol: str) -> list[dict]:
+    """Doorklik-links per aandeel/munt (label + url)."""
+    if symbol.endswith("-USD"):  # crypto — DEGIRO doet geen crypto
+        base = symbol[:-4]
+        return [
+            {"label": "TradingView", "url": f"https://www.tradingview.com/chart/?symbol={base}USD"},
+            {"label": "Yahoo Finance", "url": f"https://finance.yahoo.com/quote/{symbol}"},
+        ]
     base = symbol
     prefix = None
     for suffix, pfx in _TV_PREFIX.items():
@@ -185,10 +200,10 @@ def external_links(symbol: str) -> dict[str, str]:
             prefix = pfx
             break
     tv_symbol = f"{prefix}:{base.replace('-', '_')}" if prefix else base
-    return {
-        "tradingview": f"https://www.tradingview.com/chart/?symbol={tv_symbol}",
-        "degiro": "https://trader.degiro.nl/",
-    }
+    return [
+        {"label": "TradingView", "url": f"https://www.tradingview.com/chart/?symbol={tv_symbol}"},
+        {"label": "DEGIRO", "url": "https://trader.degiro.nl/"},
+    ]
 
 
 # ------------------------------------------------------------- prijsreeks ---

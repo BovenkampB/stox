@@ -24,6 +24,7 @@
     </a>
     <nav class="mainnav">
       <a href="{{ url_for('index') }}"    class="{{ 'active' if request.path == '/' }}">Overzicht</a>
+      <a href="{{ url_for('crypto') }}"   class="{{ 'active' if request.path.startswith('/crypto') }}">Crypto</a>
       <a href="{{ url_for('news') }}"     class="{{ 'active' if request.path.startswith('/news') }}">Nieuws</a>
       <a href="{{ url_for('report') }}"   class="{{ 'active' if request.path.startswith('/report') }}">Rapport</a>
       <a href="{{ url_for('logbook') }}"  class="{{ 'active' if request.path.startswith('/logbook') }}">Logboek</a>

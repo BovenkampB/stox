@@ -45,6 +45,16 @@ tickers:
   - { symbol: VWRL.AS, name: Vanguard FTSE All-World (dist),  category: "Index / ETF", region: EU }
   - { symbol: VWCE.DE, name: Vanguard FTSE All-World (acc),   category: "Index / ETF", region: EU }
 
+  # ============ Crypto (populairste munten) ============
+  - { symbol: BTC-USD,  name: Bitcoin,   category: "Crypto", region: Crypto }
+  - { symbol: ETH-USD,  name: Ethereum,  category: "Crypto", region: Crypto }
+  - { symbol: BNB-USD,  name: BNB,       category: "Crypto", region: Crypto }
+  - { symbol: SOL-USD,  name: Solana,    category: "Crypto", region: Crypto }
+  - { symbol: XRP-USD,  name: XRP,       category: "Crypto", region: Crypto }
+  - { symbol: ADA-USD,  name: Cardano,   category: "Crypto", region: Crypto }
+  - { symbol: DOGE-USD, name: Dogecoin,  category: "Crypto", region: Crypto }
+  - { symbol: AVAX-USD, name: Avalanche, category: "Crypto", region: Crypto }
+
 # Dip-signaal: stox waarschuwt wanneer deze fondsen onder hun recente top staan,
 # handig om je maandelijkse inleg extra in te zetten op een terugval.
 dip_alert:

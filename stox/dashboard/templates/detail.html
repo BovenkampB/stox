@@ -20,8 +20,9 @@
       <div class="panel-head">
         <h2>Koersgrafiek</h2>
         <div class="ext-links">
-          <a href="{{ d.links.tradingview }}" target="_blank" rel="noopener">TradingView ↗</a>
-          <a href="{{ d.links.degiro }}" target="_blank" rel="noopener" title="Opent DEGIRO — inloggen en ticker zoeken">DEGIRO ↗</a>
+          {% for l in d.links %}
+          <a href="{{ l.url }}" target="_blank" rel="noopener">{{ l.label }} ↗</a>
+          {% endfor %}
         </div>
       </div>
       <div id="chart" data-symbol="{{ d.symbol }}"></div>

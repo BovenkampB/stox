@@ -25,12 +25,28 @@ def create_app(settings: Settings | None = None) -> Flask:
         category = request.args.get("category") or None
         b = book()
         try:
-            rows = service.overview_rows(settings, b, category)
+            rows = service.overview_rows(settings, b, category,
+                                         exclude=[service.CRYPTO_CATEGORY])
         finally:
             b.close()
         return render_template(
-            "overview.html", rows=rows, categories=service.categories(settings),
-            active_category=category,
+            "overview.html", rows=rows,
+            categories=service.categories(settings, exclude=[service.CRYPTO_CATEGORY]),
+            active_category=category, filter_endpoint="index",
+            page_title="Overzicht", page_sub="Getrackte aandelen, gesorteerd op koopadvies.",
+        )
+
+    @app.route("/crypto")
+    def crypto():
+        b = book()
+        try:
+            rows = service.overview_rows(settings, b, category=service.CRYPTO_CATEGORY)
+        finally:
+            b.close()
+        return render_template(
+            "overview.html", rows=rows, categories=[], active_category=None,
+            filter_endpoint="index",
+            page_title="Crypto", page_sub="Populairste cryptomunten, gesorteerd op koopadvies.",
         )
 
     @app.route("/stock/<path:symbol>")

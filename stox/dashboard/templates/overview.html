@@ -1,19 +1,21 @@
 {% extends "base.html" %}
-{% block title %}Overzicht — Stoxxx{% endblock %}
+{% block title %}{{ page_title }} — Stoxxx{% endblock %}
 {% block content %}
 <section class="page">
   <div class="page-head">
-    <h1>Overzicht</h1>
-    <p class="sub">Getrackte aandelen, gesorteerd op koopadvies.</p>
+    <h1>{{ page_title }}</h1>
+    <p class="sub">{{ page_sub }}</p>
   </div>
 
+  {% if categories %}
   <div class="filters">
-    <a href="{{ url_for('index') }}" class="chip {{ 'active' if not active_category }}">Alle</a>
+    <a href="{{ url_for(filter_endpoint) }}" class="chip {{ 'active' if not active_category }}">Alle</a>
     {% for c in categories %}
-    <a href="{{ url_for('index', category=c) }}"
+    <a href="{{ url_for(filter_endpoint, category=c) }}"
        class="chip {{ 'active' if active_category == c }}">{{ c }}</a>
     {% endfor %}
   </div>
+  {% endif %}
 
   <div class="table-wrap">
     <table class="grid">

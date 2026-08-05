@@ -28,13 +28,14 @@ def _parse_time(entry) -> str:
     return getattr(entry, "published", "")
 
 
-def fetch_news(company: str, limit: int = 8, language: str = "en-US") -> list[NewsItem]:
-    """Zoek recent nieuws over een bedrijf.
+def fetch_news(company: str, limit: int = 8, language: str = "en-US", kind: str = "stock") -> list[NewsItem]:
+    """Zoek recent nieuws over een bedrijf of crypto-munt.
 
-    We zoeken op de bedrijfsnaam + 'stock' zodat we financieel-relevante
-    artikelen krijgen. Google News RSS is gratis en vereist geen sleutel.
+    We zoeken op de naam + een trefwoord ('stock' voor aandelen, 'crypto' voor
+    cryptomunten) zodat we financieel-relevante artikelen krijgen. Google News
+    RSS is gratis en vereist geen sleutel.
     """
-    query = urllib.parse.quote_plus(f"{company} stock")
+    query = urllib.parse.quote_plus(f"{company} {kind}")
     gl = language.split("-")[-1] if "-" in language else "US"
     url = (
         f"https://news.google.com/rss/search?q={query}"
