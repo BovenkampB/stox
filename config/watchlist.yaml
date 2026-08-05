@@ -22,6 +22,7 @@ tickers:
   - { symbol: AAPL, name: Apple,     category: "US Tech", region: US }
   - { symbol: MSFT, name: Microsoft, category: "US Tech", region: US }
   - { symbol: GTLB, name: GitLab,    category: "US Tech", region: US }
+  - { symbol: AMD,  name: Advanced Micro Devices, category: "US Tech", region: US }
 
   # ============ Defensie & Drones ============
   - { symbol: AVAV,      name: AeroVironment,   category: "Defensie & Drones", region: US }
