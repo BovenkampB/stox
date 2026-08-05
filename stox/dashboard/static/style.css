@@ -12,6 +12,7 @@
   --blue: #4c9be8;
   --sma20: #f0a020;
   --sma50: #4c9be8;
+  --sma200: #c678dd;
   --radius: 12px;
   font-size: 15px;
 }
@@ -134,8 +135,17 @@ ul.sources li a:hover { color: var(--blue); }
 #chart { width: 100%; height: 340px; }
 .legend { display: flex; gap: 16px; margin-top: 10px; color: var(--muted); font-size: .8rem; }
 .legend .sw { display: inline-block; width: 12px; height: 3px; margin-right: 5px; vertical-align: middle; border-radius: 2px; }
-.sw.green { background: var(--green); } .sw.sma20 { background: var(--sma20); } .sw.sma50 { background: var(--sma50); }
+.sw.green { background: var(--green); } .sw.sma20 { background: var(--sma20); } .sw.sma50 { background: var(--sma50); } .sw.sma200 { background: var(--sma200); }
 canvas.spark { display: block; }
+
+/* ---- Range-filter onder de grafiek ---- */
+.range-filter { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.range-filter button {
+  background: var(--panel-2); color: var(--muted); border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 12px; font-size: .8rem; font-weight: 600; cursor: pointer;
+}
+.range-filter button:hover { color: var(--text); border-color: var(--muted); }
+.range-filter button.active { background: var(--text); color: var(--bg); border-color: var(--text); }
 
 /* ---- Report ---- */
 .stat-row { display: flex; gap: 16px; margin-bottom: 20px; }

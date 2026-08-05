@@ -6,6 +6,9 @@ from __future__ import annotations
 
 import re
 
+import pandas as pd
+import yfinance as yf
+
 from ..config import Settings, Ticker
 from ..logbook.store import Logbook, Recommendation
 from ..logbook.evaluator import compute_accuracy, HOLD_BAND_PCT
@@ -233,30 +236,68 @@ def _entry_status(close) -> dict:
 
 
 # ------------------------------------------------------------- prijsreeks ---
-def price_series(symbol: str, period: str = "6mo") -> dict:
-    """OHLC + SMA20/SMA50 + instapkans voor de grafiek/overzicht (via de TTL-cache)."""
-    data = cache.get_history(symbol, period=period)
-    df = data.history.dropna(subset=["Close"])  # lege rijen (bv. lopende dag) weglaten
+_RANGE_DAILY_DAYS = {"1mo": 31, "6mo": 190, "1y": 370}   # zichtbaar venster in dagen
+_RANGE_INTRADAY = {"1d": ("1d", "5m"), "5d": ("5d", "30m")}
+
+
+def _empty_series() -> dict:
+    return {"candles": [], "sma20": [], "sma50": [], "sma200": [], "last_close": None,
+            "entry": {"level": "none", "depth_pct": 0.0, "drawdown_pct": 0.0}}
+
+
+def _daily_series(symbol: str, rng: str) -> dict:
+    # Ruime historie (2j) zodat SMA200 ook op korte zichtvensters gevuld is.
+    df = cache.get_history(symbol, period="2y").history.dropna(subset=["Close"])
     if df.empty:
-        return {"candles": [], "sma20": [], "sma50": [], "last_close": None,
-                "entry": {"level": "none", "depth_pct": 0.0, "drawdown_pct": 0.0}}
+        return _empty_series()
+    close = df["Close"]
+    sma20, sma50, sma200 = (close.rolling(w).mean() for w in (20, 50, 200))
+
+    last_date = df.index[-1]
+    if rng == "ytd":
+        start = pd.Timestamp(year=last_date.year, month=1, day=1)
+    else:
+        start = last_date - pd.Timedelta(days=_RANGE_DAILY_DAYS.get(rng, 190))
+    mask = df.index >= start
 
     def _line(series):
-        s = series.dropna()
-        return [{"time": t.strftime("%Y-%m-%d"), "value": round(float(v), 2)}
-                for t, v in s.items()]
+        s = series[mask].dropna()
+        return [{"time": t.strftime("%Y-%m-%d"), "value": round(float(v), 2)} for t, v in s.items()]
 
+    vis = df[mask]
     candles = [
         {"time": t.strftime("%Y-%m-%d"),
          "open": round(float(row.Open), 2), "high": round(float(row.High), 2),
          "low": round(float(row.Low), 2), "close": round(float(row.Close), 2)}
-        for t, row in df.iterrows()
+        for t, row in vis.iterrows()
     ]
-    close = df["Close"]
-    return {
-        "candles": candles,
-        "sma20": _line(close.rolling(20).mean()),
-        "sma50": _line(close.rolling(50).mean()),
-        "last_close": round(float(close.iloc[-1]), 2),
-        "entry": _entry_status(close),
-    }
+    return {"candles": candles, "sma20": _line(sma20), "sma50": _line(sma50),
+            "sma200": _line(sma200), "last_close": round(float(close.iloc[-1]), 2),
+            "entry": _entry_status(close)}
+
+
+def _intraday_series(symbol: str, rng: str) -> dict:
+    period, interval = _RANGE_INTRADAY[rng]
+    hist = yf.Ticker(symbol).history(period=period, interval=interval, auto_adjust=True)
+    hist = hist.dropna(subset=["Close"])
+    if hist.empty:
+        return {"candles": [], "sma20": [], "sma50": [], "sma200": [],
+                "last_close": None, "entry": None}
+    candles = [
+        {"time": int(row.Index.timestamp()),  # UTC-seconden (tz-correct) voor intraday
+         "open": round(float(row.Open), 2), "high": round(float(row.High), 2),
+         "low": round(float(row.Low), 2), "close": round(float(row.Close), 2)}
+        for row in hist.itertuples()
+    ]
+    return {"candles": candles, "sma20": [], "sma50": [], "sma200": [],
+            "last_close": round(float(hist["Close"].iloc[-1]), 2), "entry": None}
+
+
+def price_series(symbol: str, rng: str = "6mo") -> dict:
+    """Koersdata voor de grafiek: candles + SMA20/50/200 (+ instapkans).
+
+    Dagbereiken (1mo/6mo/ytd/1y) tonen SMA-lijnen; intraday (1d/5d) alleen candles.
+    """
+    if rng in _RANGE_INTRADAY:
+        return _intraday_series(symbol, rng)
+    return _daily_series(symbol, rng)

@@ -26,10 +26,19 @@
         </div>
       </div>
       <div id="chart" data-symbol="{{ d.symbol }}"></div>
+      <div class="range-filter">
+        <button data-range="1d">1D</button>
+        <button data-range="5d">5D</button>
+        <button data-range="1mo">1M</button>
+        <button data-range="6mo" class="active">6M</button>
+        <button data-range="ytd">YTD</button>
+        <button data-range="1y">1J</button>
+      </div>
       <div class="legend">
-        <span><i class="sw green"></i> koers (candles)</span>
+        <span><i class="sw green"></i> koers</span>
         <span><i class="sw sma20"></i> SMA 20</span>
         <span><i class="sw sma50"></i> SMA 50</span>
+        <span><i class="sw sma200"></i> SMA 200</span>
       </div>
     </div>
 

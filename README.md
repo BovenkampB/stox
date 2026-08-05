@@ -75,8 +75,9 @@ het logboek — het draait geen nieuwe analyses en kost dus geen API-credits.
 - **Crypto** — dezelfde weergave voor de populairste cryptomunten (BTC, ETH, …),
   die via dezelfde pijplijn worden geanalyseerd.
 - **Detail** (klik een aandeel) — de volledige redenatie, de gebruikte bronnen,
-  een candlestick-grafiek (rood/groen, met SMA20/SMA50) en doorklik-links naar
-  TradingView en DEGIRO, plus de adviezenhistorie.
+  een candlestick-grafiek (rood/groen, met SMA20/SMA50/SMA200) met een
+  range-filter (1D, 5D, 1M, 6M, YTD, 1J — 1D/5D tonen intraday), doorklik-links
+  naar TradingView en DEGIRO, plus de adviezenhistorie.
 - **Nieuws** — alle bronartikelen gesorteerd op de datum waarop ze zijn meegewogen.
 - **Rapport** — trefzekerheid per signaal, categorie en horizon (vult zich zodra
   er evaluaties zijn).
