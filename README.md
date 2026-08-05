@@ -69,7 +69,9 @@ python -m stox dashboard
 het logboek — het draait geen nieuwe analyses en kost dus geen API-credits.
 
 - **Overzicht** — alle getrackte aandelen, gesorteerd op koopadvies, met een
-  sparkline per aandeel; filter op categorie.
+  sparkline per aandeel en een **Instapkans**-kolom (hoe ver onder de recente
+  top: lichte/flinke/grote terugval — objectief, los van het koop/verkoopsignaal);
+  filter op categorie.
 - **Crypto** — dezelfde weergave voor de populairste cryptomunten (BTC, ETH, …),
   die via dezelfde pijplijn worden geanalyseerd.
 - **Detail** (klik een aandeel) — de volledige redenatie, de gebruikte bronnen,

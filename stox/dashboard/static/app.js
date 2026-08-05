@@ -34,13 +34,36 @@ function drawSparkline(canvas, closes) {
   ctx.stroke();
 }
 
-async function loadSparklines() {
+const ENTRY_LABEL = {
+  klein: "lichte terugval", flink: "flinke terugval", groot: "grote terugval",
+};
+
+function renderEntry(el, entry) {
+  if (!el) return;
+  if (!entry || entry.level === "none") {
+    el.textContent = "—";
+    el.className = "entry-val muted";
+    el.title = "dicht bij de recente top";
+    return;
+  }
+  el.textContent = `${entry.drawdown_pct.toFixed(0)}% t.o.v. top`;
+  el.className = "entry-val entry-" + entry.level;
+  el.title = ENTRY_LABEL[entry.level] +
+    " — koers staat onder de top van de afgelopen maanden (objectief, geen advies)";
+}
+
+async function loadRows() {
   const canvases = document.querySelectorAll("canvas.spark");
   for (const canvas of canvases) {
+    const row = canvas.closest("tr");
     try {
-      const data = await fetchPrices(canvas.dataset.symbol, "1mo");
+      const data = await fetchPrices(canvas.dataset.symbol, "6mo");
       drawSparkline(canvas, data.candles.map(c => c.close));
-    } catch (_) { /* stil falen */ }
+      if (row) renderEntry(row.querySelector(".entry-val"), data.entry);
+    } catch (_) {
+      const el = row && row.querySelector(".entry-val");
+      if (el) { el.textContent = "—"; el.className = "entry-val muted"; }
+    }
   }
 }
 
@@ -71,12 +94,13 @@ async function loadChart() {
     sma20.setData(data.sma20);
     sma50.setData(data.sma50);
     chart.timeScale().fitContent();
+    renderEntry(document.getElementById("entry-badge"), data.entry);
   } catch (e) {
     el.innerHTML = '<p class="muted">Kon de koersdata niet laden.</p>';
   }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  loadSparklines();
+  loadRows();
   loadChart();
 });

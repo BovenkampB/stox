@@ -209,13 +209,37 @@ def external_links(symbol: str) -> list[dict]:
     ]
 
 
+# ------------------------------------------------- instapkans (drawdown) ---
+# Ruimere drempels dan de ETF-dip: losse aandelen/crypto zijn volatieler.
+ENTRY_LOOKBACK = 90                                   # ~top van de afgelopen maanden
+ENTRY_THRESHOLDS = [(25, "groot"), (15, "flink"), (8, "klein")]
+
+
+def _entry_status(close) -> dict:
+    """Hoe ver staat de koers onder zijn recente top? (objectief, geen advies)"""
+    if close.empty:
+        return {"level": "none", "depth_pct": 0.0, "drawdown_pct": 0.0}
+    window = close.tail(ENTRY_LOOKBACK)
+    high = float(window.max())
+    last = float(close.iloc[-1])
+    drawdown = (last - high) / high * 100 if high else 0.0
+    depth = -drawdown
+    level = "none"
+    for thr, name in ENTRY_THRESHOLDS:
+        if depth >= thr:
+            level = name
+            break
+    return {"level": level, "depth_pct": round(depth, 1), "drawdown_pct": round(drawdown, 1)}
+
+
 # ------------------------------------------------------------- prijsreeks ---
 def price_series(symbol: str, period: str = "6mo") -> dict:
-    """OHLC + SMA20/SMA50 voor de candlestick-grafiek (via de TTL-cache)."""
+    """OHLC + SMA20/SMA50 + instapkans voor de grafiek/overzicht (via de TTL-cache)."""
     data = cache.get_history(symbol, period=period)
-    df = data.history
+    df = data.history.dropna(subset=["Close"])  # lege rijen (bv. lopende dag) weglaten
     if df.empty:
-        return {"candles": [], "sma20": [], "sma50": [], "last_close": None}
+        return {"candles": [], "sma20": [], "sma50": [], "last_close": None,
+                "entry": {"level": "none", "depth_pct": 0.0, "drawdown_pct": 0.0}}
 
     def _line(series):
         s = series.dropna()
@@ -234,4 +258,5 @@ def price_series(symbol: str, period: str = "6mo") -> dict:
         "sma20": _line(close.rolling(20).mean()),
         "sma50": _line(close.rolling(50).mean()),
         "last_close": round(float(close.iloc[-1]), 2),
+        "entry": _entry_status(close),
     }

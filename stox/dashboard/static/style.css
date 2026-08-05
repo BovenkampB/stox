@@ -153,6 +153,13 @@ canvas.spark { display: block; }
 .ok { color: var(--green); font-weight: 600; }
 .bad { color: var(--red); font-weight: 600; }
 
+/* ---- Instapkans (drawdown t.o.v. recente top) ---- */
+.entry-val { font-weight: 700; font-size: .82rem; white-space: nowrap; }
+.entry-klein { color: var(--amber); }
+.entry-flink { color: #ff8c42; }
+.entry-groot { color: var(--green); }
+h2 .entry-val { font-size: .8rem; margin-left: 6px; }
+
 .empty, .empty-card { color: var(--muted); }
 .empty-card { background: var(--panel); border: 1px dashed var(--border); border-radius: var(--radius);
   padding: 40px; text-align: center; }

@@ -23,7 +23,7 @@
         <tr>
           <th>Advies</th><th>Aandeel</th><th>Categorie</th>
           <th class="num">Zekerheid</th><th class="num">Koers</th>
-          <th>Trend (1mnd)</th><th class="num">Bijgewerkt</th>
+          <th>Instapkans</th><th>Trend (6mnd)</th><th class="num">Bijgewerkt</th>
         </tr>
       </thead>
       <tbody>
@@ -42,6 +42,7 @@
             {% else %}<span class="muted">—</span>{% endif %}
           </td>
           <td class="num">{{ r.price if r.price is not none else '—' }}</td>
+          <td><span class="entry-val muted" title="wordt geladen">…</span></td>
           <td><canvas class="spark" data-symbol="{{ r.symbol }}" width="120" height="30"></canvas></td>
           <td class="num muted">{{ r.created_at[:10] if r.created_at else 'nog niet' }}</td>
         </tr>
