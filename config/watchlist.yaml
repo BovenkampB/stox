@@ -15,6 +15,9 @@ tickers:
   - { symbol: BESI.AS,  name: BE Semiconductor,    category: "AEX / EU", region: EU }
   - { symbol: SHELL.AS, name: Shell,               category: "AEX / EU", region: EU }
   - { symbol: INGA.AS,  name: ING Groep,           category: "AEX / EU", region: EU }
+  - { symbol: MBG.DE,   name: Mercedes-Benz Group, category: "AEX / EU", region: EU }
+  - { symbol: AD.AS,    name: Ahold Delhaize,      category: "AEX / EU", region: EU }
+  - { symbol: REN.AS,   name: RELX,                category: "AEX / EU", region: EU }
 
   # ============ US tech & software ============
   - { symbol: TSLA, name: Tesla,     category: "US Tech", region: US }
@@ -23,6 +26,15 @@ tickers:
   - { symbol: MSFT, name: Microsoft, category: "US Tech", region: US }
   - { symbol: GTLB, name: GitLab,    category: "US Tech", region: US }
   - { symbol: AMD,  name: Advanced Micro Devices, category: "US Tech", region: US }
+  - { symbol: MU,    name: Micron Technology, category: "US Tech", region: US }
+  - { symbol: GOOGL, name: Alphabet (Google), category: "US Tech", region: US }
+  - { symbol: AMZN,  name: Amazon,            category: "US Tech", region: US }
+  - { symbol: ORCL,  name: Oracle,            category: "US Tech", region: US }
+  - { symbol: TSM,   name: TSMC,              category: "US Tech", region: US }
+
+  # ============ Consument & Zorg ============
+  - { symbol: CPB, name: Campbell's, category: "Consument & Zorg", region: US }
+  - { symbol: ZTS, name: Zoetis,     category: "Consument & Zorg", region: US }
 
   # ============ Defensie & Drones ============
   - { symbol: AVAV,      name: AeroVironment,   category: "Defensie & Drones", region: US }
@@ -54,6 +66,10 @@ tickers:
   - { symbol: ADA-USD,  name: Cardano,   category: "Crypto", region: Crypto }
   - { symbol: DOGE-USD, name: Dogecoin,  category: "Crypto", region: Crypto }
   - { symbol: AVAX-USD, name: Avalanche, category: "Crypto", region: Crypto }
+  - { symbol: LINK-USD, name: Chainlink, category: "Crypto", region: Crypto }
+  - { symbol: AAVE-USD, name: Aave,      category: "Crypto", region: Crypto }
+  - { symbol: SUI20947-USD,  name: Sui,         category: "Crypto", region: Crypto }
+  - { symbol: HYPE32196-USD, name: Hyperliquid, category: "Crypto", region: Crypto }
 
 # Dip-signaal: stox waarschuwt wanneer deze fondsen onder hun recente top staan,
 # handig om je maandelijkse inleg extra in te zetten op een terugval.

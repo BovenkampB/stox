@@ -4,6 +4,8 @@ Puur lezen: geen nieuwe analyses, geen schrijfacties, geen API-kosten.
 """
 from __future__ import annotations
 
+import re
+
 from ..config import Settings, Ticker
 from ..logbook.store import Logbook, Recommendation
 from ..logbook.evaluator import compute_accuracy, HOLD_BAND_PCT
@@ -187,7 +189,8 @@ _TV_PREFIX = {".AS": "EURONEXT", ".DE": "XETR", ".MI": "MIL", ".ST": "OMXSTO"}
 def external_links(symbol: str) -> list[dict]:
     """Doorklik-links per aandeel/munt (label + url)."""
     if symbol.endswith("-USD"):  # crypto — DEGIRO doet geen crypto
-        base = symbol[:-4]
+        # Yahoo gebruikt soms een cijfercode (SUI20947-USD); strip die voor TradingView.
+        base = re.sub(r"\d+$", "", symbol[:-4])
         return [
             {"label": "TradingView", "url": f"https://www.tradingview.com/chart/?symbol={base}USD"},
             {"label": "Yahoo Finance", "url": f"https://finance.yahoo.com/quote/{symbol}"},
