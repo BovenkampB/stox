@@ -49,8 +49,20 @@ def cmd_analyze(args) -> None:
         if not tickers:
             console.print(f"[red]Ticker {args.symbol} staat niet in de watchlist.[/red]")
             return
+    if args.category:
+        needle = args.category.lower()
+        tickers = [t for t in tickers if needle in t.category.lower()]
+        if not tickers:
+            cats = sorted({t.category for t in settings.tickers})
+            console.print(f"[red]Geen categorie die matcht op '{args.category}'.[/red] "
+                          f"Beschikbaar: {', '.join(cats)}")
+            return
 
+    current_category = None
     for ticker in tickers:
+        if ticker.category != current_category:
+            current_category = ticker.category
+            console.rule(f"[bold]{current_category}[/bold]")
         console.print(f"Analyseren: [cyan]{ticker.name}[/cyan] ({ticker.symbol}) …")
         result = analyse_ticker(ticker, settings, book)
         if result is None:
@@ -175,6 +187,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_an = sub.add_parser("analyze", help="Analyseer de watchlist en log aanbevelingen.")
     p_an.add_argument("--symbol", help="Analyseer slechts één ticker uit de watchlist.")
+    p_an.add_argument("--category", help="Analyseer alleen een categorie, bijv. 'Defensie' of 'Index'.")
     p_an.set_defaults(func=cmd_analyze)
 
     p_ev = sub.add_parser("evaluate", help="Evalueer verstreken aanbevelingen (leerlus).")

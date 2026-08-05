@@ -20,6 +20,7 @@ load_dotenv(ROOT / ".env")
 class Ticker:
     symbol: str
     name: str
+    category: str = "Overig"
     region: str = ""
 
 
@@ -42,6 +43,7 @@ def load_settings(watchlist_path: Path | None = None) -> Settings:
         Ticker(
             symbol=t["symbol"],
             name=t.get("name", t["symbol"]),
+            category=t.get("category", "Overig"),
             region=t.get("region", ""),
         )
         for t in raw.get("tickers", [])

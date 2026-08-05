@@ -1,39 +1,44 @@
-# De aandelen die stox volgt. Voeg gerust toe of verwijder.
+# De aandelen die stox volgt, gegroepeerd per categorie.
 # 'symbol' is het ticker-symbool zoals yfinance het kent:
-#   - Euronext Amsterdam eindigt op .AS  (bijv. ASML.AS)
+#   - Euronext Amsterdam eindigt op .AS   (bijv. ASML.AS)
+#   - Duitse Xetra-beurs eindigt op .DE    (bijv. RHM.DE)
+#   - Italiaanse beurs .MI, Zweedse .ST
 #   - Amerikaanse beurzen hebben geen achtervoegsel (bijv. TSLA)
 
 # Standaard horizon (in dagen) waarop een aanbeveling wordt geëvalueerd.
 default_horizon_days: 14
 
 tickers:
-  # --- Nederlandse / EU aandelen ---
-  - symbol: ASML.AS
-    name: ASML Holding
-    region: EU
-  - symbol: ADYEN.AS
-    name: Adyen
-    region: EU
-  - symbol: BESI.AS
-    name: BE Semiconductor
-    region: EU
-  - symbol: SHELL.AS
-    name: Shell
-    region: EU
-  - symbol: INGA.AS
-    name: ING Groep
-    region: EU
+  # ============ Nederlandse / EU aandelen ============
+  - { symbol: ASML.AS,  name: ASML Holding,        category: "AEX / EU", region: EU }
+  - { symbol: ADYEN.AS, name: Adyen,               category: "AEX / EU", region: EU }
+  - { symbol: BESI.AS,  name: BE Semiconductor,    category: "AEX / EU", region: EU }
+  - { symbol: SHELL.AS, name: Shell,               category: "AEX / EU", region: EU }
+  - { symbol: INGA.AS,  name: ING Groep,           category: "AEX / EU", region: EU }
 
-  # --- Amerikaanse tech ---
-  - symbol: TSLA
-    name: Tesla
-    region: US
-  - symbol: NVDA
-    name: Nvidia
-    region: US
-  - symbol: AAPL
-    name: Apple
-    region: US
-  - symbol: MSFT
-    name: Microsoft
-    region: US
+  # ============ US tech & software ============
+  - { symbol: TSLA, name: Tesla,     category: "US Tech", region: US }
+  - { symbol: NVDA, name: Nvidia,    category: "US Tech", region: US }
+  - { symbol: AAPL, name: Apple,     category: "US Tech", region: US }
+  - { symbol: MSFT, name: Microsoft, category: "US Tech", region: US }
+  - { symbol: GTLB, name: GitLab,    category: "US Tech", region: US }
+
+  # ============ Defensie & Drones ============
+  - { symbol: AVAV,      name: AeroVironment,   category: "Defensie & Drones", region: US }
+  - { symbol: KTOS,      name: Kratos Defense,  category: "Defensie & Drones", region: US }
+  - { symbol: RCAT,      name: Red Cat Holdings, category: "Defensie & Drones", region: US }
+  - { symbol: PLTR,      name: Palantir,        category: "Defensie & Drones", region: US }
+  - { symbol: RHM.DE,    name: Rheinmetall,     category: "Defensie & Drones", region: EU }
+  - { symbol: HAG.DE,    name: Hensoldt,        category: "Defensie & Drones", region: EU }
+  - { symbol: LDO.MI,    name: Leonardo,        category: "Defensie & Drones", region: EU }
+  - { symbol: SAAB-B.ST, name: Saab,            category: "Defensie & Drones", region: EU }
+
+  # ============ Cannabis / legalisatie ============
+  - { symbol: SBX.DE,  name: SynBiotic SE,      category: "Cannabis", region: EU }
+  - { symbol: HIGH.DE, name: Cantourage Group,  category: "Cannabis", region: EU }
+  - { symbol: TLRY,    name: Tilray Brands,     category: "Cannabis", region: US }
+  - { symbol: ACB,     name: Aurora Cannabis,   category: "Cannabis", region: US }
+
+  # ============ Index / ETF (breed, lange termijn) ============
+  - { symbol: VUSA.AS, name: Vanguard S&P 500 UCITS,       category: "Index / ETF", region: EU }
+  - { symbol: VWRL.AS, name: Vanguard FTSE All-World UCITS, category: "Index / ETF", region: EU }
