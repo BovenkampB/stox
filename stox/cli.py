@@ -482,6 +482,25 @@ def cmd_history(args) -> None:
     book.close()
 
 
+def cmd_dashboard(args) -> int:
+    import threading
+    import webbrowser
+
+    from .dashboard.app import create_app
+
+    settings = load_settings()
+    app = create_app(settings)
+    url = f"http://{args.host}:{args.port}"
+    console.print(
+        f"[green]Stoxxx dashboard[/green] draait op [b]{url}[/b]  "
+        "(read-only · Ctrl+C om te stoppen)"
+    )
+    if not args.no_browser:
+        threading.Timer(1.0, lambda: webbrowser.open(url)).start()
+    app.run(host=args.host, port=args.port, debug=False)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="stox", description="Transparante aandelen-analyse.")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -506,6 +525,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_src.add_argument("--limit", type=int, default=1,
                        help="Aantal recente aanbevelingen om te tonen (standaard 1).")
     p_src.set_defaults(func=cmd_sources)
+
+    p_dash = sub.add_parser("dashboard", help="Start het lokale Stoxxx-webdashboard (read-only).")
+    p_dash.add_argument("--host", default="127.0.0.1")
+    p_dash.add_argument("--port", type=int, default=8000)
+    p_dash.add_argument("--no-browser", action="store_true", help="Open de browser niet automatisch.")
+    p_dash.set_defaults(func=cmd_dashboard)
 
     p_daily = sub.add_parser("daily", help="Volledige dagroutine: evalueer + analyseer alles + mail samenvatting.")
     p_daily.add_argument("--email", action="store_true", help="Mail de dagelijkse samenvatting.")

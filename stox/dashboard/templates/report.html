@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Rapport — Stoxxx{% endblock %}
+{% block content %}
+
+{% macro bars(d, unit='') %}
+<div class="bars">
+  {% for label, pair in d.items() %}
+  {% if pair[1] > 0 %}
+  <div class="bar-row">
+    <span class="bar-lbl">{{ label }}{{ unit }}</span>
+    <div class="bar"><span style="width: {{ (pair[0] / pair[1] * 100)|round(0,'floor') }}%"></span></div>
+    <span class="bar-val">{{ pair[0] }}/{{ pair[1] }} ({{ (pair[0] / pair[1] * 100)|round(0,'floor')|int }}%)</span>
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endmacro %}
+
+<section class="page">
+  <div class="page-head">
+    <h1>Rapport</h1>
+    <p class="sub">Trefzekerheid van geëvalueerde aanbevelingen (na afloop van hun horizon).</p>
+  </div>
+
+  {% if r.total == 0 %}
+  <div class="empty-card">
+    <h2>Nog geen evaluaties</h2>
+    <p>Aanbevelingen worden pas beoordeeld nadat hun horizon is verstreken. Zodra de eerste
+      adviezen 'rijp' zijn, verschijnt hier je trefzekerheid — automatisch.</p>
+  </div>
+  {% else %}
+  <div class="stat-row">
+    <div class="stat">
+      <span class="stat-num">{{ r.hit_rate|round(0,'floor')|int }}%</span>
+      <span class="stat-lbl">trefzekerheid</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num">{{ r.correct }}/{{ r.total }}</span>
+      <span class="stat-lbl">correct / totaal</span>
+    </div>
+  </div>
+
+  <div class="detail-grid">
+    <div class="panel">
+      <h2>Per signaal</h2>
+      {{ bars(r.by_signal) }}
+    </div>
+    <div class="panel">
+      <h2>Per categorie</h2>
+      {{ bars(r.by_category) }}
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Per horizon</h2>
+    {{ bars(r.by_horizon, ' dagen') }}
+    <p class="muted small">'Aanhouden' telt als correct wanneer de koers binnen ±{{ r.hold_band_pct }}% bleef.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Geëvalueerde adviezen</h2>
+    <div class="table-wrap">
+      <table class="grid">
+        <thead><tr>
+          <th>Datum</th><th>Aandeel</th><th>Advies</th>
+          <th>Uitkomst</th><th class="num">Rendement</th>
+        </tr></thead>
+        <tbody>
+          {% for e in r.evaluated_rows %}
+          <tr>
+            <td class="muted">{{ e.created_at[:10] }}</td>
+            <td class="name"><a href="{{ url_for('stock', symbol=e.symbol) }}">{{ e.symbol }}</a></td>
+            <td><span class="badge sig-{{ e.signal }}">{{ e.signal_label }}</span></td>
+            <td><span class="{{ 'ok' if e.correct else 'bad' }}">{{ '✓ klopte' if e.correct else '✗ klopte niet' }}</span></td>
+            <td class="num {{ 'ok' if e.actual_return_pct and e.actual_return_pct > 0 else ('bad' if e.actual_return_pct and e.actual_return_pct < 0 else '') }}">
+              {{ '%+.1f%%'|format(e.actual_return_pct) if e.actual_return_pct is not none else '—' }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

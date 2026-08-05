@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Stoxxx{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="logo" href="{{ url_for('index') }}" aria-label="Stoxxx home">
+      <svg viewBox="0 0 214 46" width="150" height="32" role="img" aria-label="Stoxxx logo">
+        <text x="0" y="34" class="logo-text">Sto</text>
+        <!-- drie candlesticks als 'xxx', oplopende trend -->
+        <g stroke-width="3" stroke-linecap="round">
+          <line x1="83"  y1="14" x2="83"  y2="40" stroke="#ea3943"/>
+          <rect x="77"  y="22" width="12" height="12" rx="1.5" fill="#ea3943"/>
+          <line x1="115" y1="8"  x2="115" y2="34" stroke="#16c784"/>
+          <rect x="109" y="14" width="12" height="13" rx="1.5" fill="#16c784"/>
+          <line x1="147" y1="3"  x2="147" y2="30" stroke="#16c784"/>
+          <rect x="141" y="8"  width="12" height="13" rx="1.5" fill="#16c784"/>
+        </g>
+      </svg>
+    </a>
+    <nav class="mainnav">
+      <a href="{{ url_for('index') }}"    class="{{ 'active' if request.path == '/' }}">Overzicht</a>
+      <a href="{{ url_for('news') }}"     class="{{ 'active' if request.path.startswith('/news') }}">Nieuws</a>
+      <a href="{{ url_for('report') }}"   class="{{ 'active' if request.path.startswith('/report') }}">Rapport</a>
+      <a href="{{ url_for('logbook') }}"  class="{{ 'active' if request.path.startswith('/logbook') }}">Logboek</a>
+    </nav>
+    <span class="model-badge">{{ model }}</span>
+  </header>
+
+  <main>{% block content %}{% endblock %}</main>
+
+  <footer class="disclaimer">
+    stox is een analysehulpmiddel, geen beleggingsadvies. De markt is niet betrouwbaar te
+    voorspellen; aanbevelingen zijn benaderingen. Jij beslist zelf.
+  </footer>
+
+  <script src="{{ url_for('static', filename='vendor/lightweight-charts.standalone.js') }}"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

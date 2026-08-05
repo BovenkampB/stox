@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Nieuws — Stoxxx{% endblock %}
+{% block content %}
+<section class="page">
+  <div class="page-head">
+    <h1>Nieuws</h1>
+    <p class="sub">
+      Artikelen gesorteerd op <b>analysedatum</b> — het moment waarop ze zijn meegewogen
+      om tot een advies te komen.{% if symbol %} Gefilterd op <b>{{ symbol }}</b>.
+      <a href="{{ url_for('news') }}">toon alles</a>{% endif %}
+    </p>
+  </div>
+
+  {% if items %}
+  <div class="table-wrap">
+    <table class="grid">
+      <thead><tr>
+        <th>Geanalyseerd</th><th>Aandeel</th><th>Advies</th>
+        <th>Artikel</th><th>Uitgever</th><th class="num">Gepubliceerd</th>
+      </tr></thead>
+      <tbody>
+        {% for i in items %}
+        <tr>
+          <td class="muted">{{ i.analysis_date[:10] }}</td>
+          <td class="name"><a href="{{ url_for('stock', symbol=i.symbol) }}">{{ i.symbol }}</a></td>
+          <td><span class="badge small sig-{{ i.signal }}">{{ i.signal_label }}</span></td>
+          <td class="article"><a href="{{ i.link }}" target="_blank" rel="noopener">{{ i.title }}</a></td>
+          <td class="muted">{{ i.publisher }}</td>
+          <td class="num muted">{{ i.published }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">Nog geen nieuwsbronnen opgeslagen. Zodra er aanbevelingen met bronnen zijn,
+    verschijnen ze hier.</p>
+  {% endif %}
+</section>
+{% endblock %}

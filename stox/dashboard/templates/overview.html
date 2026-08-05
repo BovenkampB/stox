@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Overzicht — Stoxxx{% endblock %}
+{% block content %}
+<section class="page">
+  <div class="page-head">
+    <h1>Overzicht</h1>
+    <p class="sub">Getrackte aandelen, gesorteerd op koopadvies.</p>
+  </div>
+
+  <div class="filters">
+    <a href="{{ url_for('index') }}" class="chip {{ 'active' if not active_category }}">Alle</a>
+    {% for c in categories %}
+    <a href="{{ url_for('index', category=c) }}"
+       class="chip {{ 'active' if active_category == c }}">{{ c }}</a>
+    {% endfor %}
+  </div>
+
+  <div class="table-wrap">
+    <table class="grid">
+      <thead>
+        <tr>
+          <th>Advies</th><th>Aandeel</th><th>Categorie</th>
+          <th class="num">Zekerheid</th><th class="num">Koers</th>
+          <th>Trend (1mnd)</th><th class="num">Bijgewerkt</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr class="row-link" onclick="location.href='{{ url_for('stock', symbol=r.symbol) }}'">
+          <td><span class="badge sig-{{ r.signal }}">{{ r.signal_label }}</span></td>
+          <td class="name">
+            <a href="{{ url_for('stock', symbol=r.symbol) }}">{{ r.name }}</a>
+            <span class="ticker">{{ r.symbol }}</span>
+          </td>
+          <td class="muted">{{ r.category }}</td>
+          <td class="num">
+            {% if r.confidence is not none %}
+              <div class="conf"><span style="width: {{ (r.confidence * 100)|round(0, 'floor') }}%"></span></div>
+              <em>{{ (r.confidence * 100)|round(0, 'floor')|int }}%</em>
+            {% else %}<span class="muted">—</span>{% endif %}
+          </td>
+          <td class="num">{{ r.price if r.price is not none else '—' }}</td>
+          <td><canvas class="spark" data-symbol="{{ r.symbol }}" width="120" height="30"></canvas></td>
+          <td class="num muted">{{ r.created_at[:10] if r.created_at else 'nog niet' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

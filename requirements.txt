@@ -5,3 +5,4 @@ anthropic>=0.40
 PyYAML>=6.0
 python-dotenv>=1.0
 rich>=13.7
+Flask>=3.0

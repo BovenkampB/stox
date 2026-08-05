@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Niet gevonden — Stoxxx{% endblock %}
+{% block content %}
+<section class="page">
+  <div class="empty-card">
+    <h2>Niet gevonden</h2>
+    <p>Deze pagina of dit aandeel bestaat niet. <a href="{{ url_for('index') }}">Terug naar het overzicht</a>.</p>
+  </div>
+</section>
+{% endblock %}

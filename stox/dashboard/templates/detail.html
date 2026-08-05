@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}{{ d.name }} — Stoxxx{% endblock %}
+{% block content %}
+<section class="page">
+  <a class="back" href="{{ url_for('index') }}">← Overzicht</a>
+
+  <div class="detail-head">
+    <div>
+      <h1>{{ d.name }} <span class="ticker big">{{ d.symbol }}</span></h1>
+      <p class="sub">{{ d.category }}</p>
+    </div>
+    {% if d.latest %}
+    <span class="badge big sig-{{ d.latest.signal }}">{{ d.latest.signal_label }}</span>
+    {% endif %}
+  </div>
+
+  <div class="detail-grid">
+    <!-- Grafiek -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Koersgrafiek</h2>
+        <div class="ext-links">
+          <a href="{{ d.links.tradingview }}" target="_blank" rel="noopener">TradingView ↗</a>
+          <a href="{{ d.links.degiro }}" target="_blank" rel="noopener" title="Opent DEGIRO — inloggen en ticker zoeken">DEGIRO ↗</a>
+        </div>
+      </div>
+      <div id="chart" data-symbol="{{ d.symbol }}"></div>
+      <div class="legend">
+        <span><i class="sw green"></i> koers (candles)</span>
+        <span><i class="sw sma20"></i> SMA 20</span>
+        <span><i class="sw sma50"></i> SMA 50</span>
+      </div>
+    </div>
+
+    <!-- Aanbeveling -->
+    <div class="panel">
+      <h2>Aanbeveling</h2>
+      {% if d.latest %}
+      <p class="meta">
+        Zekerheid <b>{{ (d.latest.confidence * 100)|round(0,'floor')|int }}%</b> ·
+        horizon {{ d.latest.horizon_days }} dagen ·
+        koers bij advies {{ d.latest.price }} ·
+        bron: {{ d.latest.source }} · {{ d.latest.created_at[:16] }}
+      </p>
+      <p class="rationale">{{ d.latest.rationale }}</p>
+      {% if d.latest.key_factors %}
+      <h3>Kernfactoren</h3>
+      <ul class="factors">{% for f in d.latest.key_factors %}<li>{{ f }}</li>{% endfor %}</ul>
+      {% endif %}
+      {% if d.latest.risks %}
+      <h3>Risico's</h3>
+      <ul class="risks">{% for f in d.latest.risks %}<li>{{ f }}</li>{% endfor %}</ul>
+      {% endif %}
+      {% else %}
+      <p class="muted">Nog geen aanbeveling voor dit aandeel.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Bronnen -->
+  <div class="panel">
+    <h2>Gebruikte bronnen</h2>
+    {% if d.latest and d.latest.sources %}
+    <ul class="sources">
+      {% for s in d.latest.sources %}
+      <li>
+        <a href="{{ s.link }}" target="_blank" rel="noopener">{{ s.title }}</a>
+        <span class="src-meta">{{ s.published }} · {{ s.source }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">Geen bronnen opgeslagen bij de laatste aanbeveling.</p>
+    {% endif %}
+  </div>
+
+  <!-- Historie -->
+  <div class="panel">
+    <h2>Historie van adviezen</h2>
+    <div class="table-wrap">
+      <table class="grid">
+        <thead><tr>
+          <th>Datum</th><th>Advies</th><th class="num">Zekerheid</th>
+          <th class="num">Koers</th><th>Status</th><th class="num">Resultaat</th>
+        </tr></thead>
+        <tbody>
+          {% for h in d.history %}
+          <tr>
+            <td class="muted">{{ h.created_at[:10] }}</td>
+            <td><span class="badge sig-{{ h.signal }}">{{ h.signal_label }}</span></td>
+            <td class="num">{{ (h.confidence * 100)|round(0,'floor')|int }}%</td>
+            <td class="num">{{ h.price }}</td>
+            <td>
+              {% if h.evaluated %}
+                <span class="{{ 'ok' if h.correct else 'bad' }}">{{ '✓ klopte' if h.correct else '✗ klopte niet' }}</span>
+              {% else %}<span class="muted">wacht</span>{% endif %}
+            </td>
+            <td class="num {{ 'ok' if h.actual_return_pct and h.actual_return_pct > 0 else ('bad' if h.actual_return_pct and h.actual_return_pct < 0 else '') }}">
+              {{ '%+.1f%%'|format(h.actual_return_pct) if h.actual_return_pct is not none else '—' }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

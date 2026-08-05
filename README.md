@@ -57,7 +57,30 @@ python -m stox daily
 
 # Toon de nieuwsbronnen achter de laatste aanbeveling voor een ticker
 python -m stox sources KTOS
+
+# Start het lokale webdashboard (opent vanzelf in je browser)
+python -m stox dashboard
 ```
+
+## Dashboard
+
+`python -m stox dashboard` start een lokaal, **read-only** webdashboard op
+`http://127.0.0.1:8000` (opent automatisch je browser). Het toont alle data uit
+het logboek — het draait geen nieuwe analyses en kost dus geen API-credits.
+
+- **Overzicht** — alle getrackte aandelen, gesorteerd op koopadvies, met een
+  sparkline per aandeel; filter op categorie.
+- **Detail** (klik een aandeel) — de volledige redenatie, de gebruikte bronnen,
+  een candlestick-grafiek (rood/groen, met SMA20/SMA50) en doorklik-links naar
+  TradingView en DEGIRO, plus de adviezenhistorie.
+- **Nieuws** — alle bronartikelen gesorteerd op de datum waarop ze zijn meegewogen.
+- **Rapport** — trefzekerheid per signaal, categorie en horizon (vult zich zodra
+  er evaluaties zijn).
+- **Logboek** — alle aanbevelingen.
+
+Opties: `--port`, `--host`, `--no-browser`. Draait op de Flask dev-server; voor
+een permanente opstelling (bijv. Raspberry Pi) kun je later een WSGI-server zoals
+waitress gebruiken.
 
 ## Dagelijkse samenvatting
 

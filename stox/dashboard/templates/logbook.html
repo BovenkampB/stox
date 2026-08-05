@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Logboek — Stoxxx{% endblock %}
+{% block content %}
+<section class="page">
+  <div class="page-head">
+    <h1>Logboek</h1>
+    <p class="sub">Alle gemaakte aanbevelingen, nieuwste eerst.</p>
+  </div>
+
+  <div class="table-wrap">
+    <table class="grid">
+      <thead><tr>
+        <th>#</th><th>Datum</th><th>Aandeel</th><th>Advies</th>
+        <th class="num">Zekerheid</th><th class="num">Koers</th>
+        <th class="num">Horizon</th><th>Status</th><th class="num">Resultaat</th>
+      </tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr class="row-link" onclick="location.href='{{ url_for('stock', symbol=r.symbol) }}'">
+          <td class="muted">{{ r.id }}</td>
+          <td class="muted">{{ r.created_at[:10] }}</td>
+          <td class="name"><a href="{{ url_for('stock', symbol=r.symbol) }}">{{ r.symbol }}</a></td>
+          <td><span class="badge sig-{{ r.signal }}">{{ r.signal_label }}</span></td>
+          <td class="num">{{ (r.confidence * 100)|round(0,'floor')|int }}%</td>
+          <td class="num">{{ r.price }}</td>
+          <td class="num muted">{{ r.horizon_days }}d</td>
+          <td>
+            {% if r.evaluated %}
+              <span class="{{ 'ok' if r.correct else 'bad' }}">{{ '✓' if r.correct else '✗' }} geëvalueerd</span>
+            {% else %}<span class="muted">wacht</span>{% endif %}
+          </td>
+          <td class="num {{ 'ok' if r.actual_return_pct and r.actual_return_pct > 0 else ('bad' if r.actual_return_pct and r.actual_return_pct < 0 else '') }}">
+            {{ '%+.1f%%'|format(r.actual_return_pct) if r.actual_return_pct is not none else '—' }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
