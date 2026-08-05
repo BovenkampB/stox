@@ -211,10 +211,53 @@ def _maybe_email_dip(dips: list[DipStatus], settings) -> None:
         book.close()
 
 
+def _send_test_email(statuses: list[DipStatus]) -> int:
+    """Verstuur één testmail met de actuele stand, ongeacht drempel/anti-spam."""
+    cfg = load_email_config()
+    if not cfg.is_configured:
+        console.print(
+            "[red]E-mail niet geconfigureerd.[/red] Zet eerst STOX_SMTP_USER, "
+            "STOX_SMTP_PASSWORD en STOX_ALERT_TO in je .env (zie .env.example)."
+        )
+        return 1
+
+    lines = [
+        "Dit is een TESTMAIL van stox om je e-mailinstellingen te controleren.",
+        "",
+        "Huidige stand van je gevolgde fondsen:",
+    ]
+    if statuses:
+        for s in statuses:
+            staat = "op/bij de top" if not s.is_dip else f"{s.level} dip"
+            lines.append(
+                f"- {s.name} ({s.symbol}): {s.last_close} — "
+                f"{s.depth_pct:.1f}% onder de top van {s.recent_high} "
+                f"({s.high_date}) → {staat}."
+            )
+    else:
+        lines.append("- (geen dip-symbolen geconfigureerd in watchlist.yaml)")
+    lines += [
+        "",
+        "Zie je deze mail? Dan werkt de dip-melding. Je krijgt voortaan "
+        "automatisch bericht zodra er een echte dip is.",
+    ]
+    try:
+        send_email(cfg, "[TEST] stox e-mailmelding werkt", "\n".join(lines))
+        console.print(f"[green]Testmail verstuurd naar {cfg.recipient}.[/green] "
+                      "Check je inbox (en eventueel de spam-map).")
+        return 0
+    except Exception as exc:
+        console.print(f"[red]Testmail versturen mislukt:[/red] {exc}")
+        return 1
+
+
 def cmd_dip(args) -> int:
     settings = load_settings()
     name_lookup = {t.symbol: t.name for t in settings.tickers}
     statuses = assess_all(settings.dip, name_lookup)
+
+    if args.test_email:
+        return _send_test_email(statuses)
 
     dips = [s for s in statuses if s.is_dip]
 
@@ -318,6 +361,8 @@ def build_parser() -> argparse.ArgumentParser:
                        help="Geef alleen output als er daadwerkelijk een dip is (voor geplande taken).")
     p_dip.add_argument("--email", action="store_true",
                        help="Verstuur een e-mail bij een (nieuwe of diepere) dip.")
+    p_dip.add_argument("--test-email", action="store_true",
+                       help="Stuur één testmail met de actuele stand om je e-mailinstellingen te controleren.")
     p_dip.set_defaults(func=cmd_dip)
 
     return parser
