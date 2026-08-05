@@ -17,6 +17,7 @@ from rich.table import Table
 
 from .config import load_settings
 from .analysis.recommender import analyse_ticker, store_result
+from .analysis.dip import assess_all
 from .logbook.store import Logbook
 from .logbook.evaluator import run_evaluation, compute_accuracy
 
@@ -149,6 +150,57 @@ def _print_accuracy(book: Logbook) -> None:
     console.print(table)
 
 
+DIP_STYLE = {"geen": "green", "licht": "yellow", "matig": "orange3", "stevig": "bold red"}
+
+
+def cmd_dip(args) -> int:
+    settings = load_settings()
+    name_lookup = {t.symbol: t.name for t in settings.tickers}
+    statuses = assess_all(settings.dip, name_lookup)
+
+    dips = [s for s in statuses if s.is_dip]
+
+    # --quiet: geef alleen iets terug als er een dip is (voor cron/e-mail).
+    if args.quiet and not dips:
+        return 0
+
+    if not statuses:
+        console.print("[dim]Geen dip-symbolen geconfigureerd (zie 'dip_alert' in watchlist.yaml).[/dim]")
+        return 0
+
+    table = Table(title="Dip-signaal (t.o.v. recente top)")
+    table.add_column("Fonds")
+    table.add_column("Koers", justify="right")
+    table.add_column("Recente top", justify="right")
+    table.add_column("Onder top", justify="right")
+    table.add_column("RSI", justify="right")
+    table.add_column("Signaal")
+    for s in statuses:
+        style = DIP_STYLE.get(s.level, "white")
+        signal = "— geen dip" if not s.is_dip else f"DIP: {s.level}"
+        table.add_row(
+            f"{s.name} ({s.symbol})",
+            f"{s.last_close}",
+            f"{s.recent_high} ({s.high_date})",
+            f"[{style}]-{s.depth_pct:.1f}%[/{style}]",
+            f"{s.rsi14}",
+            f"[{style}]{signal}[/{style}]",
+        )
+    console.print(table)
+
+    if dips:
+        deepest = max(dips, key=lambda s: s.depth_pct)
+        console.print(
+            f"\n[bold]📉 Seintje:[/bold] {deepest.name} staat "
+            f"[{DIP_STYLE.get(deepest.level)}]{deepest.depth_pct:.1f}% onder de recente top[/] "
+            f"({deepest.level} dip). Overweeg je maandelijkse inleg hier deels extra in te zetten."
+        )
+        console.print(DISCLAIMER)
+    else:
+        console.print("\n[green]Geen dip op dit moment — de fondsen staan dicht bij hun recente top.[/green]")
+    return 0
+
+
 def cmd_history(args) -> None:
     settings = load_settings()
     book = Logbook(settings.db_path)
@@ -200,6 +252,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_re = sub.add_parser("report", help="Toon trefzekerheid / statistieken.")
     p_re.set_defaults(func=cmd_report)
 
+    p_dip = sub.add_parser("dip", help="Check of de index/ETF-fondsen onder hun recente top staan.")
+    p_dip.add_argument("--quiet", action="store_true",
+                       help="Geef alleen output als er daadwerkelijk een dip is (voor geplande taken).")
+    p_dip.set_defaults(func=cmd_dip)
+
     return parser
 
 
@@ -214,11 +271,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        args.func(args)
+        result = args.func(args)
     except KeyboardInterrupt:
         console.print("\n[dim]Afgebroken.[/dim]")
         return 130
-    return 0
+    return result if isinstance(result, int) else 0
 
 
 if __name__ == "__main__":

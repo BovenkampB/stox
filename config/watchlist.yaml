@@ -40,5 +40,15 @@ tickers:
   - { symbol: ACB,     name: Aurora Cannabis,   category: "Cannabis", region: US }
 
   # ============ Index / ETF (breed, lange termijn) ============
-  - { symbol: VUSA.AS, name: Vanguard S&P 500 UCITS,       category: "Index / ETF", region: EU }
-  - { symbol: VWRL.AS, name: Vanguard FTSE All-World UCITS, category: "Index / ETF", region: EU }
+  - { symbol: VUSA.AS, name: Vanguard S&P 500 UCITS,          category: "Index / ETF", region: EU }
+  - { symbol: VWRL.AS, name: Vanguard FTSE All-World (dist),  category: "Index / ETF", region: EU }
+  - { symbol: VWCE.DE, name: Vanguard FTSE All-World (acc),   category: "Index / ETF", region: EU }
+
+# Dip-signaal: stox waarschuwt wanneer deze fondsen onder hun recente top staan,
+# handig om je maandelijkse inleg extra in te zetten op een terugval.
+dip_alert:
+  lookback_days: 30      # 'recente top' = hoogste slotkoers in dit aantal handelsdagen
+  mild_pct: 3            # ≥3% onder de top = lichte dip
+  moderate_pct: 5        # ≥5% = matige dip
+  significant_pct: 8     # ≥8% = stevige dip
+  symbols: [VWRL.AS, VWCE.DE]
