@@ -224,8 +224,90 @@ def _daily_summary(results, eval_res, acc, skipped: int = 0) -> tuple[str, str]:
     return subject, "\n".join(lines)
 
 
+def _summary_from_recs(recs, settings, acc) -> tuple[str, str]:
+    """Bouw (onderwerp, tekst) uit opgeslagen aanbevelingen (voor --resend)."""
+    from collections import Counter
+
+    cat_of = {t.symbol: t.category for t in settings.tickers}
+    cat_order = {c: i for i, c in enumerate(dict.fromkeys(t.category for t in settings.tickers))}
+    recs = sorted(recs, key=lambda r: (cat_order.get(cat_of.get(r.symbol, ""), 999), r.symbol))
+
+    counts = Counter(r.signal for r in recs)
+    buy, sell, hold = counts.get("buy", 0), counts.get("sell", 0), counts.get("hold", 0)
+    datestr = date.today().strftime("%d-%m-%Y")
+    subject = f"stox dagelijks: {buy} kopen, {sell} verkopen, {hold} aanhouden ({datestr})"
+
+    lines = [f"stox dagelijkse samenvatting — {datestr}", ""]
+    if acc.total:
+        lines.append(f"Trefzekerheid tot nu toe: {acc.correct}/{acc.total} ({acc.hit_rate:.0f}%).")
+    lines.append("")
+
+    actionable = [r for r in recs if r.signal in ("buy", "sell")]
+    if actionable:
+        lines.append("== Signalen die om aandacht vragen ==")
+        for r in sorted(actionable, key=lambda r: -r.confidence):
+            lab = SIGNAL_LABEL.get(r.signal, r.signal)
+            lines.append(f"[{lab}] {r.name} ({r.symbol}) — zekerheid {r.confidence:.0%}, koers {r.price_at_reco}")
+            if r.rationale:
+                lines.append(f"    {r.rationale}")
+            if r.sources:
+                lines.append("    Bronnen:")
+                for sd in r.sources[:4]:
+                    lines.append(f"      - {sd.get('title', '')} ({sd.get('source', '')}) {sd.get('link', '')}")
+            lines.append("")
+
+    lines.append("== Volledig overzicht ==")
+    current = None
+    for r in recs:
+        cat = cat_of.get(r.symbol, "Overig")
+        if cat != current:
+            current = cat
+            lines.append(f"\n{cat}:")
+        lab = SIGNAL_LABEL.get(r.signal, r.signal)
+        lines.append(f"  {lab:9s} {r.symbol:12s} {r.price_at_reco:>9}  (zekerheid {r.confidence:.0%})")
+
+    lines += [
+        "",
+        "— stox is een analysehulpmiddel, geen beleggingsadvies. "
+        "De markt is niet betrouwbaar te voorspellen; jij beslist zelf.",
+    ]
+    return subject, "\n".join(lines)
+
+
+def _resend_today(settings) -> int:
+    """Mail de samenvatting van vandaag opnieuw uit het bestaande logboek (geen her-analyse)."""
+    book = Logbook(settings.db_path)
+    today = date.today().isoformat()
+    latest = {}
+    for r in book.all(limit=5000):
+        if r.created_at[:10] == today:
+            latest.setdefault(r.symbol, r)  # meest recente per aandeel
+    if not latest:
+        console.print("[yellow]Geen aanbevelingen van vandaag in het logboek om te versturen.[/yellow]")
+        book.close()
+        return 0
+
+    acc = compute_accuracy(book)
+    subject, body = _summary_from_recs(list(latest.values()), settings, acc)
+    cfg = load_email_config()
+    if not cfg.is_configured:
+        console.print("[yellow]Geen SMTP-gegevens in .env — kan niet mailen.[/yellow]")
+    else:
+        try:
+            send_email(cfg, subject, body)
+            console.print(f"[green]Samenvatting opnieuw gemaild naar {cfg.recipient}[/green] "
+                          f"({len(latest)} aandelen, uit bestaande bronnen).")
+        except Exception as exc:
+            console.print(f"[red]E-mail versturen mislukt:[/red] {exc}")
+    console.print(Panel(body, title="Dagelijkse samenvatting (opnieuw verstuurd)", border_style="cyan"))
+    book.close()
+    return 0
+
+
 def cmd_daily(args) -> int:
     settings = load_settings()
+    if args.resend:
+        return _resend_today(settings)
     if not settings.anthropic_api_key:
         console.print("[yellow]Let op:[/yellow] geen ANTHROPIC_API_KEY — regelgebaseerde modus.")
 
@@ -563,6 +645,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_daily = sub.add_parser("daily", help="Volledige dagroutine: evalueer + analyseer alles + mail samenvatting.")
     p_daily.add_argument("--email", action="store_true", help="Mail de dagelijkse samenvatting.")
     p_daily.add_argument("--category", help="Beperk tot een categorie (handig om te testen/kosten te sparen).")
+    p_daily.add_argument("--resend", action="store_true",
+                         help="Analyseer niet opnieuw; mail de samenvatting van vandaag uit het bestaande logboek.")
     p_daily.set_defaults(func=cmd_daily)
 
     p_dip = sub.add_parser("dip", help="Check of de index/ETF-fondsen onder hun recente top staan.")
