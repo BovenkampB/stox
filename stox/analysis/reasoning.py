@@ -44,7 +44,11 @@ Antwoord UITSLUITEND met geldige JSON in dit schema:
   "rationale": "<2-4 zinnen onderbouwing in het Nederlands>",
   "key_factors": ["<kort feit>", ...],
   "risks": ["<kort risico>", ...]
-}"""
+}
+
+Regels voor je antwoord:
+- Geef UITSLUITEND dit JSON-object terug — geen markdown, geen ``` code-fences, geen tekst eromheen.
+- Gebruik binnen strings geen letterlijke regeleinden; houd elke waarde op één regel."""
 
 
 def _format_news(news: list[NewsItem]) -> str:
@@ -148,14 +152,15 @@ def reason(
     try:
         client = anthropic.Anthropic(api_key=api_key)
         user_prompt = _build_user_prompt(name, symbol, tech, news, track_record)
-        resp = client.messages.create(
-            model=model,
-            max_tokens=1024,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_prompt}],
-        )
-        text = "".join(block.text for block in resp.content if block.type == "text")
-        data = _extract_json(text)
+        data, last_err = None, None
+        for _ in range(2):  # één herkansing bij een onleesbaar JSON-antwoord
+            try:
+                data = _ask_claude(client, model, user_prompt)
+                break
+            except (ValueError, json.JSONDecodeError) as err:
+                last_err = err
+        if data is None:
+            raise last_err
         signal = str(data.get("signal", "hold")).lower()
         if signal not in VALID_SIGNALS:
             signal = "hold"
@@ -176,6 +181,18 @@ def reason(
         return fallback
 
 
+def _ask_claude(client, model: str, user_prompt: str) -> dict:
+    """Vraag Claude om het signaal en geef het geparste JSON-object terug."""
+    resp = client.messages.create(
+        model=model,
+        max_tokens=1500,
+        system=SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_prompt}],
+    )
+    text = "".join(block.text for block in resp.content if block.type == "text")
+    return _extract_json(text)
+
+
 def _extract_json(text: str) -> dict:
     """Haal het eerste JSON-object uit een tekst (voor het geval er extra tekst omheen staat)."""
     text = text.strip()
@@ -183,4 +200,5 @@ def _extract_json(text: str) -> dict:
     end = text.rfind("}")
     if start == -1 or end == -1:
         raise ValueError(f"Geen JSON gevonden in antwoord: {text[:200]}")
-    return json.loads(text[start : end + 1])
+    # strict=False: sta letterlijke regeleinden/controltekens binnen strings toe.
+    return json.loads(text[start : end + 1], strict=False)
