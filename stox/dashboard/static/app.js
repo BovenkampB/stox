@@ -2,7 +2,7 @@
 
 const COLORS = {
   green: "#16c784", red: "#ea3943", sma20: "#f0a020", sma50: "#4c9be8", sma200: "#c678dd",
-  bb: "rgba(139,152,169,0.7)", rsi: "#4c9be8", macd: "#4c9be8", macdSignal: "#f0a020",
+  bb: "rgba(139,152,169,0.7)", rsi: "#eab308", macd: "#22d3ee", macdSignal: "#f472b6",
   text: "#8b98a9", grid: "rgba(38,48,64,0.5)", border: "#263040",
 };
 
@@ -155,6 +155,13 @@ async function renderChart(symbol, range) {
 
   chart.timeScale().fitContent();
   renderEntry(document.getElementById("entry-badge"), data.entry);
+  updateLegend();
+}
+
+function updateLegend() {
+  document.querySelectorAll(".leg-ind").forEach((el) => {
+    el.hidden = !indicatorState[el.dataset.ind];
+  });
 }
 
 function initDetailChart() {

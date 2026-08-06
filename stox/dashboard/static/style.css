@@ -136,6 +136,8 @@ ul.sources li a:hover { color: var(--blue); }
 .legend { display: flex; gap: 16px; margin-top: 10px; color: var(--muted); font-size: .8rem; }
 .legend .sw { display: inline-block; width: 12px; height: 3px; margin-right: 5px; vertical-align: middle; border-radius: 2px; }
 .sw.green { background: var(--green); } .sw.sma20 { background: var(--sma20); } .sw.sma50 { background: var(--sma50); } .sw.sma200 { background: var(--sma200); }
+.sw.bb { background: #8b98a9; } .sw.rsi { background: #eab308; } .sw.macd { background: #22d3ee; } .sw.macd-signal { background: #f472b6; }
+.legend [hidden] { display: none; }
 canvas.spark { display: block; }
 
 /* ---- Range- en indicator-filter onder de grafiek ---- */
