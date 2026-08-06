@@ -10,13 +10,14 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import date
+import traceback
+from datetime import date, datetime
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from .config import load_settings
+from .config import DATA_DIR, load_settings
 from .analysis.recommender import analyse_ticker, store_result
 from .analysis.dip import assess_all, DipStatus
 from .notify import load_email_config, send_email
@@ -33,6 +34,17 @@ DISCLAIMER = (
 
 SIGNAL_STYLE = {"buy": "bold green", "sell": "bold red", "hold": "yellow"}
 SIGNAL_LABEL = {"buy": "KOPEN", "sell": "VERKOPEN", "hold": "AANHOUDEN"}
+
+
+def log_error(context: str, exc: BaseException) -> None:
+    """Schrijf een fout met traceback naar data/stox.log (voor onzichtbare geplande runs)."""
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        with open(DATA_DIR / "stox.log", "a", encoding="utf-8") as fh:
+            fh.write(f"\n[{datetime.now():%Y-%m-%d %H:%M:%S}] {context}\n")
+            fh.write("".join(traceback.format_exception(type(exc), exc, exc.__traceback__)))
+    except Exception:
+        pass  # logging mag nooit zelf de boel laten crashen
 
 
 def cmd_analyze(args) -> None:
@@ -152,7 +164,7 @@ def _print_accuracy(book: Logbook) -> None:
     console.print(table)
 
 
-def _daily_summary(results, eval_res, acc) -> tuple[str, str]:
+def _daily_summary(results, eval_res, acc, skipped: int = 0) -> tuple[str, str]:
     """Bouw (onderwerp, tekst) voor de dagelijkse samenvattingsmail."""
     from collections import Counter
 
@@ -171,6 +183,8 @@ def _daily_summary(results, eval_res, acc) -> tuple[str, str]:
         lines.append(
             f"Trefzekerheid tot nu toe: {acc.correct}/{acc.total} ({acc.hit_rate:.0f}%)."
         )
+    if skipped:
+        lines.append(f"Let op: {skipped} ticker(s) overgeslagen door een fout (zie data/stox.log).")
     lines.append("")
 
     actionable = [r for r in results if r.reasoning.signal in ("buy", "sell")]
@@ -228,23 +242,31 @@ def cmd_daily(args) -> int:
     # 1. Evalueer verstreken aanbevelingen (voedt de track record voor de nieuwe ronde).
     eval_res = run_evaluation(book)
 
-    # 2. Analyseer en log.
+    # 2. Analyseer en log. Elk aandeel apart afgeschermd: één fout mag de hele
+    #    run (en dus de mail) nooit slopen.
     results = []
+    skipped = 0
     current_category = None
     for ticker in tickers:
         if ticker.category != current_category:
             current_category = ticker.category
             console.rule(f"[bold]{current_category}[/bold]")
         console.print(f"Analyseren: [cyan]{ticker.name}[/cyan] ({ticker.symbol}) …")
-        result = analyse_ticker(ticker, settings, book)
-        if result is None:
-            console.print(f"  [red]Onvoldoende data voor {ticker.symbol}.[/red]")
-            continue
-        store_result(result, book)
-        results.append(result)
+        try:
+            result = analyse_ticker(ticker, settings, book)
+            if result is None:
+                console.print(f"  [red]Onvoldoende data voor {ticker.symbol}.[/red]")
+                skipped += 1
+                continue
+            store_result(result, book)
+            results.append(result)
+        except Exception as exc:
+            console.print(f"  [red]Overgeslagen ({ticker.symbol}): {exc}[/red]")
+            log_error(f"daily: analyse mislukt voor {ticker.symbol}", exc)
+            skipped += 1
 
     acc = compute_accuracy(book)
-    subject, body = _daily_summary(results, eval_res, acc)
+    subject, body = _daily_summary(results, eval_res, acc, skipped)
 
     # 3. Mail of toon.
     if args.email:
@@ -570,6 +592,11 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         console.print("\n[dim]Afgebroken.[/dim]")
         return 130
+    except Exception as exc:
+        # Vangnet: bewaar de traceback zodat onzichtbare geplande runs te debuggen zijn.
+        log_error(f"onverwachte fout in commando '{getattr(args, 'command', '?')}'", exc)
+        console.print(f"[red]Onverwachte fout:[/red] {exc}  [dim](zie data/stox.log)[/dim]")
+        return 1
     return result if isinstance(result, int) else 0
 
 

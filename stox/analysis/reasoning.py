@@ -145,10 +145,9 @@ def reason(
     except ImportError:
         return _heuristic(tech, horizon_days)
 
-    client = anthropic.Anthropic(api_key=api_key)
-    user_prompt = _build_user_prompt(name, symbol, tech, news, track_record)
-
     try:
+        client = anthropic.Anthropic(api_key=api_key)
+        user_prompt = _build_user_prompt(name, symbol, tech, news, track_record)
         resp = client.messages.create(
             model=model,
             max_tokens=1024,
