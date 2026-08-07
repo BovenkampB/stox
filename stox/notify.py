@@ -46,8 +46,12 @@ def load_email_config() -> EmailConfig:
     )
 
 
-def send_email(cfg: EmailConfig, subject: str, body: str) -> None:
-    """Verstuur een platte-tekst e-mail via SMTP met STARTTLS."""
+def send_email(cfg: EmailConfig, subject: str, body: str, html: str | None = None) -> None:
+    """Verstuur een e-mail via SMTP met STARTTLS.
+
+    'body' is de platte-tekst versie; geef optioneel 'html' mee voor een opgemaakte
+    variant (clients tonen dan de HTML en vallen terug op platte tekst).
+    """
     if not cfg.is_configured:
         raise RuntimeError(
             "E-mail niet geconfigureerd. Zet STOX_SMTP_USER, STOX_SMTP_PASSWORD "
@@ -59,6 +63,8 @@ def send_email(cfg: EmailConfig, subject: str, body: str) -> None:
     msg["From"] = cfg.sender
     msg["To"] = ", ".join(cfg.recipients)
     msg.set_content(body)
+    if html:
+        msg.add_alternative(html, subtype="html")
 
     context = ssl.create_default_context()
     with smtplib.SMTP(cfg.host, cfg.port, timeout=30) as server:

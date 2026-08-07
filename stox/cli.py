@@ -12,6 +12,7 @@ import argparse
 import sys
 import traceback
 from datetime import date, datetime
+from html import escape
 
 from rich.console import Console
 from rich.panel import Panel
@@ -164,114 +165,177 @@ def _print_accuracy(book: Logbook) -> None:
     console.print(table)
 
 
-def _daily_summary(results, eval_res, acc, skipped: int = 0) -> tuple[str, str]:
-    """Bouw (onderwerp, tekst) voor de dagelijkse samenvattingsmail."""
+def _item_from_result(r) -> dict:
+    """Normaliseer een AnalysisResult (verse run) naar een mail-item."""
+    return {
+        "symbol": r.ticker.symbol, "name": r.ticker.name, "category": r.ticker.category,
+        "signal": r.reasoning.signal, "confidence": r.reasoning.confidence,
+        "price": r.tech.last_close, "rationale": r.reasoning.rationale,
+        "sources": [{"title": n.title, "source": n.source, "link": n.link} for n in r.news],
+    }
+
+
+def _item_from_rec(r, cat_of) -> dict:
+    """Normaliseer een opgeslagen Recommendation (resend) naar een mail-item."""
+    return {
+        "symbol": r.symbol, "name": r.name, "category": cat_of.get(r.symbol, "Overig"),
+        "signal": r.signal, "confidence": r.confidence, "price": r.price_at_reco,
+        "rationale": r.rationale, "sources": r.sources or [],
+    }
+
+
+# (label, tekstkleur, achtergrond) voor de HTML-signaalbadges.
+_SIG_HTML = {
+    "buy": ("KOPEN", "#0a8f5b", "#e6f7ef"),
+    "sell": ("VERKOPEN", "#c62828", "#fdecee"),
+    "hold": ("AANHOUDEN", "#b26a00", "#fff5e6"),
+}
+
+
+def _badge_html(signal: str) -> str:
+    label, fg, bg = _SIG_HTML.get(signal, (signal.upper(), "#555", "#eee"))
+    return (f'<span style="display:inline-block;padding:2px 9px;border-radius:5px;'
+            f'font-size:12px;font-weight:700;color:{fg};background:{bg};">{label}</span>')
+
+
+def _logo_html() -> str:
+    bars = [("#ea3943", 12), ("#16c784", 17), ("#16c784", 22)]
+    spans = "".join(
+        f'<span style="display:inline-block;width:5px;height:{h}px;background:{c};'
+        f'margin:0 1px;vertical-align:middle;border-radius:1px;"></span>'
+        for c, h in bars
+    )
+    return ('<span style="font-size:26px;font-weight:800;color:#e6edf3;letter-spacing:-1px;'
+            f'vertical-align:middle;">Sto</span>{spans}')
+
+
+def _build_daily_email(items, settings, acc, note_lines=None):
+    """Bouw (onderwerp, platte tekst, HTML) voor de dagelijkse samenvattingsmail."""
     from collections import Counter
 
-    counts = Counter(r.reasoning.signal for r in results)
-    buy, sell, hold = counts.get("buy", 0), counts.get("sell", 0), counts.get("hold", 0)
-    datestr = date.today().strftime("%d-%m-%Y")
-    subject = f"stox dagelijks: {buy} kopen, {sell} verkopen, {hold} aanhouden ({datestr})"
-
-    lines = [f"stox dagelijkse samenvatting — {datestr}", ""]
-    if eval_res.evaluated:
-        lines.append(
-            f"Vandaag geëvalueerd: {eval_res.evaluated} eerdere aanbevelingen, "
-            f"waarvan {eval_res.correct} correct."
-        )
-    if acc.total:
-        lines.append(
-            f"Trefzekerheid tot nu toe: {acc.correct}/{acc.total} ({acc.hit_rate:.0f}%)."
-        )
-    if skipped:
-        lines.append(f"Let op: {skipped} ticker(s) overgeslagen door een fout (zie data/stox.log).")
-    lines.append("")
-
-    actionable = [r for r in results if r.reasoning.signal in ("buy", "sell")]
-    if actionable:
-        lines.append("== Signalen die om aandacht vragen ==")
-        for r in sorted(actionable, key=lambda r: -r.reasoning.confidence):
-            lab = SIGNAL_LABEL[r.reasoning.signal]
-            lines.append(
-                f"[{lab}] {r.ticker.name} ({r.ticker.symbol}) — "
-                f"zekerheid {r.reasoning.confidence:.0%}, koers {r.tech.last_close}"
-            )
-            if r.reasoning.rationale:
-                lines.append(f"    {r.reasoning.rationale}")
-            if r.news:
-                lines.append("    Bronnen:")
-                for n in r.news[:4]:
-                    lines.append(f"      - {n.title} ({n.source}) {n.link}")
-            lines.append("")
-
-    lines.append("== Volledig overzicht ==")
-    current = None
-    for r in results:
-        if r.ticker.category != current:
-            current = r.ticker.category
-            lines.append(f"\n{current}:")
-        lab = SIGNAL_LABEL[r.reasoning.signal]
-        lines.append(
-            f"  {lab:9s} {r.ticker.symbol:10s} {r.tech.last_close:>9}  "
-            f"(zekerheid {r.reasoning.confidence:.0%})"
-        )
-
-    lines += [
-        "",
-        "— stox is een analysehulpmiddel, geen beleggingsadvies. "
-        "De markt is niet betrouwbaar te voorspellen; jij beslist zelf.",
-    ]
-    return subject, "\n".join(lines)
-
-
-def _summary_from_recs(recs, settings, acc) -> tuple[str, str]:
-    """Bouw (onderwerp, tekst) uit opgeslagen aanbevelingen (voor --resend)."""
-    from collections import Counter
-
-    cat_of = {t.symbol: t.category for t in settings.tickers}
     cat_order = {c: i for i, c in enumerate(dict.fromkeys(t.category for t in settings.tickers))}
-    recs = sorted(recs, key=lambda r: (cat_order.get(cat_of.get(r.symbol, ""), 999), r.symbol))
+    items = sorted(items, key=lambda it: (cat_order.get(it["category"], 999), it["symbol"]))
+    note_lines = note_lines or []
 
-    counts = Counter(r.signal for r in recs)
+    counts = Counter(it["signal"] for it in items)
     buy, sell, hold = counts.get("buy", 0), counts.get("sell", 0), counts.get("hold", 0)
     datestr = date.today().strftime("%d-%m-%Y")
     subject = f"stox dagelijks: {buy} kopen, {sell} verkopen, {hold} aanhouden ({datestr})"
+    actionable = sorted((it for it in items if it["signal"] in ("buy", "sell")),
+                        key=lambda it: -it["confidence"])
 
-    lines = [f"stox dagelijkse samenvatting — {datestr}", ""]
+    def news(is_crypto):
+        seen, out = set(), []
+        for it in items:
+            if (it["category"] == "Crypto") != is_crypto:
+                continue
+            for s in (it["sources"] or [])[:3]:
+                link = s.get("link", "")
+                if not link or link in seen:
+                    continue
+                seen.add(link)
+                out.append((it["symbol"], s.get("title", ""), s.get("source", ""), link))
+        return out
+
+    # ---------- platte tekst (fallback) ----------
+    t = [f"stox dagelijkse samenvatting — {datestr}", ""]
+    t += note_lines
     if acc.total:
-        lines.append(f"Trefzekerheid tot nu toe: {acc.correct}/{acc.total} ({acc.hit_rate:.0f}%).")
-    lines.append("")
-
-    actionable = [r for r in recs if r.signal in ("buy", "sell")]
+        t.append(f"Trefzekerheid tot nu toe: {acc.correct}/{acc.total} ({acc.hit_rate:.0f}%).")
+    t.append("")
     if actionable:
-        lines.append("== Signalen die om aandacht vragen ==")
-        for r in sorted(actionable, key=lambda r: -r.confidence):
-            lab = SIGNAL_LABEL.get(r.signal, r.signal)
-            lines.append(f"[{lab}] {r.name} ({r.symbol}) — zekerheid {r.confidence:.0%}, koers {r.price_at_reco}")
-            if r.rationale:
-                lines.append(f"    {r.rationale}")
-            if r.sources:
-                lines.append("    Bronnen:")
-                for sd in r.sources[:4]:
-                    lines.append(f"      - {sd.get('title', '')} ({sd.get('source', '')}) {sd.get('link', '')}")
-            lines.append("")
+        t.append("== Signalen die om aandacht vragen ==")
+        for it in actionable:
+            t.append(f"[{SIGNAL_LABEL.get(it['signal'], it['signal'])}] {it['name']} "
+                     f"({it['symbol']}) — zekerheid {it['confidence']:.0%}, koers {it['price']}")
+            if it["rationale"]:
+                t.append(f"    {it['rationale']}")
+            t.append("")
+    t.append("== Volledig overzicht ==")
+    cur = None
+    for it in items:
+        if it["category"] != cur:
+            cur = it["category"]
+            t.append(f"\n{cur}:")
+        t.append(f"  {SIGNAL_LABEL.get(it['signal'], it['signal']):9s} {it['symbol']:12s} "
+                 f"{it['price']:>9}  (zekerheid {it['confidence']:.0%})")
+    for titel, is_crypto in [("Aandelennieuws", False), ("Cryptonieuws", True)]:
+        rows = news(is_crypto)
+        if rows:
+            t.append(f"\n== {titel} ==")
+            for sym, titl, src, link in rows:
+                t.append(f"  - [{sym}] {titl} ({src}) {link}")
+    t += ["", "— stox is een analysehulpmiddel, geen beleggingsadvies. "
+          "De markt is niet betrouwbaar te voorspellen; jij beslist zelf."]
+    text_body = "\n".join(t)
 
-    lines.append("== Volledig overzicht ==")
-    current = None
-    for r in recs:
-        cat = cat_of.get(r.symbol, "Overig")
-        if cat != current:
-            current = cat
-            lines.append(f"\n{cat}:")
-        lab = SIGNAL_LABEL.get(r.signal, r.signal)
-        lines.append(f"  {lab:9s} {r.symbol:12s} {r.price_at_reco:>9}  (zekerheid {r.confidence:.0%})")
+    # ---------- HTML ----------
+    h = ['<div style="max-width:600px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;'
+         'color:#1a1a1a;font-size:15px;line-height:1.5;">']
+    h.append('<div style="background:#0d1117;padding:18px 24px;border-radius:10px 10px 0 0;">')
+    h.append(_logo_html())
+    h.append(f'<div style="color:#8b98a9;font-size:13px;margin-top:6px;">'
+             f'Dagelijkse samenvatting · {datestr}</div></div>')
+    h.append('<div style="background:#ffffff;padding:20px 24px;border:1px solid #e5e7eb;'
+             'border-top:none;border-radius:0 0 10px 10px;">')
+    h.append(f'<p style="margin:0 0 10px;"><b style="color:#0a8f5b;">{buy} kopen</b> · '
+             f'<b style="color:#c62828;">{sell} verkopen</b> · <b>{hold} aanhouden</b></p>')
+    for nl in note_lines:
+        h.append(f'<p style="margin:0 0 6px;color:#555;font-size:13px;">{escape(nl)}</p>')
+    if acc.total:
+        h.append(f'<p style="margin:0 0 6px;color:#555;font-size:13px;">Trefzekerheid tot nu toe: '
+                 f'<b>{acc.correct}/{acc.total} ({acc.hit_rate:.0f}%)</b></p>')
 
-    lines += [
-        "",
-        "— stox is een analysehulpmiddel, geen beleggingsadvies. "
-        "De markt is niet betrouwbaar te voorspellen; jij beslist zelf.",
-    ]
-    return subject, "\n".join(lines)
+    if actionable:
+        h.append('<h2 style="font-size:16px;margin:22px 0 10px;border-bottom:2px solid #eee;'
+                 'padding-bottom:5px;">Signalen die om aandacht vragen</h2>')
+        for it in actionable:
+            h.append('<div style="margin:0 0 12px;padding:12px 14px;background:#fafbfc;'
+                     'border:1px solid #eef0f2;border-radius:8px;">')
+            h.append(f'{_badge_html(it["signal"])} <b>{escape(it["name"])}</b> '
+                     f'<span style="color:#888;font-size:13px;">{escape(it["symbol"])}</span> · '
+                     f'<b>zekerheid {it["confidence"]:.0%}</b> · '
+                     f'<span style="color:#555;">koers {it["price"]}</span>')
+            if it["rationale"]:
+                h.append(f'<div style="margin-top:6px;">{escape(it["rationale"])}</div>')
+            h.append('</div>')
+
+    h.append('<h2 style="font-size:16px;margin:22px 0 10px;border-bottom:2px solid #eee;'
+             'padding-bottom:5px;">Volledig overzicht</h2>')
+    h.append('<table style="width:100%;border-collapse:collapse;font-size:14px;">')
+    cur = None
+    for it in items:
+        if it["category"] != cur:
+            cur = it["category"]
+            h.append(f'<tr><td colspan="3" style="padding:12px 0 4px;font-weight:700;'
+                     f'color:#555;">{escape(cur)}</td></tr>')
+        h.append('<tr>'
+                 f'<td style="padding:3px 0;white-space:nowrap;">{_badge_html(it["signal"])}</td>'
+                 f'<td style="padding:3px 8px;"><b>{escape(it["symbol"])}</b> '
+                 f'<span style="color:#999;">{escape(it["name"])}</span></td>'
+                 f'<td style="padding:3px 0;text-align:right;color:#555;white-space:nowrap;">'
+                 f'{it["confidence"]:.0%} · {it["price"]}</td></tr>')
+    h.append('</table>')
+
+    for titel, is_crypto in [("Aandelennieuws", False), ("Cryptonieuws", True)]:
+        rows = news(is_crypto)
+        if not rows:
+            continue
+        h.append(f'<h2 style="font-size:15px;margin:22px 0 8px;color:#555;">{titel}</h2>')
+        h.append('<div style="font-size:12px;color:#8a8a8a;line-height:1.7;">')
+        for sym, titl, src, link in rows:
+            h.append(f'<div style="margin-bottom:3px;"><span style="color:#aaa;">[{escape(sym)}]</span> '
+                     f'<a href="{escape(link)}" style="color:#6b7280;text-decoration:none;">{escape(titl)}</a>'
+                     f' <span style="color:#bbb;">· {escape(src)}</span></div>')
+        h.append('</div>')
+
+    h.append('<p style="margin-top:24px;color:#9aa0a6;font-size:11px;border-top:1px solid #eee;'
+             'padding-top:10px;">stox is een analysehulpmiddel, geen beleggingsadvies. De markt is '
+             'niet betrouwbaar te voorspellen; jij beslist zelf.</p>')
+    h.append('</div></div>')
+    html_body = "\n".join(h)
+
+    return subject, text_body, html_body
 
 
 def _resend_today(settings) -> int:
@@ -288,13 +352,15 @@ def _resend_today(settings) -> int:
         return 0
 
     acc = compute_accuracy(book)
-    subject, body = _summary_from_recs(list(latest.values()), settings, acc)
+    cat_of = {t.symbol: t.category for t in settings.tickers}
+    items = [_item_from_rec(r, cat_of) for r in latest.values()]
+    subject, body, html = _build_daily_email(items, settings, acc)
     cfg = load_email_config()
     if not cfg.is_configured:
         console.print("[yellow]Geen SMTP-gegevens in .env — kan niet mailen.[/yellow]")
     else:
         try:
-            send_email(cfg, subject, body)
+            send_email(cfg, subject, body, html=html)
             console.print(f"[green]Samenvatting opnieuw gemaild naar {cfg.recipient}[/green] "
                           f"({len(latest)} aandelen, uit bestaande bronnen).")
         except Exception as exc:
@@ -348,7 +414,14 @@ def cmd_daily(args) -> int:
             skipped += 1
 
     acc = compute_accuracy(book)
-    subject, body = _daily_summary(results, eval_res, acc, skipped)
+    note_lines = []
+    if eval_res.evaluated:
+        note_lines.append(f"Vandaag geëvalueerd: {eval_res.evaluated} eerdere aanbevelingen, "
+                          f"waarvan {eval_res.correct} correct.")
+    if skipped:
+        note_lines.append(f"Let op: {skipped} ticker(s) overgeslagen door een fout (zie data/stox.log).")
+    items = [_item_from_result(r) for r in results]
+    subject, body, html = _build_daily_email(items, settings, acc, note_lines)
 
     # 3. Mail of toon.
     if args.email:
@@ -357,7 +430,7 @@ def cmd_daily(args) -> int:
             console.print("[yellow]E-mail overslaan:[/yellow] geen SMTP-gegevens in .env.")
         else:
             try:
-                send_email(cfg, subject, body)
+                send_email(cfg, subject, body, html=html)
                 console.print(f"[green]Samenvatting gemaild naar {cfg.recipient}.[/green]")
             except Exception as exc:
                 console.print(f"[red]E-mail versturen mislukt:[/red] {exc}")
