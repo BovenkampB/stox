@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#0d1117"/>
+  <g stroke-linecap="round">
+    <!-- candle 1: rood, laag -->
+    <line x1="8" y1="16" x2="8" y2="27.5" stroke="#ea3943" stroke-width="1.6"/>
+    <rect x="5.4" y="18.5" width="5.2" height="7" rx="1.2" fill="#ea3943"/>
+    <!-- candle 2: groen, midden -->
+    <line x1="16" y1="9.5" x2="16" y2="24" stroke="#16c784" stroke-width="1.6"/>
+    <rect x="13.4" y="12.5" width="5.2" height="8" rx="1.2" fill="#16c784"/>
+    <!-- candle 3: groen, hoog -->
+    <line x1="24" y1="4.5" x2="24" y2="20" stroke="#16c784" stroke-width="1.6"/>
+    <rect x="21.4" y="7.5" width="5.2" height="8" rx="1.2" fill="#16c784"/>
+  </g>
+</svg>
