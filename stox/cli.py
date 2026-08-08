@@ -209,7 +209,7 @@ def _logo_html() -> str:
             f'vertical-align:middle;">Sto</span>{spans}')
 
 
-def _build_daily_email(items, settings, acc, note_lines=None):
+def _build_daily_email(items, settings, acc, note_lines=None, subject_label="dagelijks"):
     """Bouw (onderwerp, platte tekst, HTML) voor de dagelijkse samenvattingsmail."""
     from collections import Counter
 
@@ -220,7 +220,7 @@ def _build_daily_email(items, settings, acc, note_lines=None):
     counts = Counter(it["signal"] for it in items)
     buy, sell, hold = counts.get("buy", 0), counts.get("sell", 0), counts.get("hold", 0)
     datestr = date.today().strftime("%d-%m-%Y")
-    subject = f"stox dagelijks: {buy} kopen, {sell} verkopen, {hold} aanhouden ({datestr})"
+    subject = f"stox {subject_label}: {buy} kopen, {sell} verkopen, {hold} aanhouden ({datestr})"
     actionable = sorted((it for it in items if it["signal"] in ("buy", "sell")),
                         key=lambda it: -it["confidence"])
 
@@ -421,7 +421,8 @@ def cmd_daily(args) -> int:
     if skipped:
         note_lines.append(f"Let op: {skipped} ticker(s) overgeslagen door een fout (zie data/stox.log).")
     items = [_item_from_result(r) for r in results]
-    subject, body, html = _build_daily_email(items, settings, acc, note_lines)
+    label = args.category.lower() if args.category else "dagelijks"
+    subject, body, html = _build_daily_email(items, settings, acc, note_lines, subject_label=label)
 
     # 3. Mail of toon.
     if args.email:
