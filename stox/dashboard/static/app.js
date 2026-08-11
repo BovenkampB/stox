@@ -190,7 +190,30 @@ function initDetailChart() {
   renderChart(symbol, currentRange);
 }
 
+function initPortfolioChart() {
+  const el = document.getElementById("pf-chart");
+  if (!el || typeof LightweightCharts === "undefined") return;
+  const LWC = LightweightCharts;
+  let hist = [];
+  try { hist = JSON.parse(document.getElementById("pf-history").textContent || "[]"); } catch (_) {}
+  const chart = LWC.createChart(el, {
+    autoSize: true,
+    layout: { background: { type: (LWC.ColorType && LWC.ColorType.Solid) || "solid", color: "transparent" }, textColor: COLORS.text },
+    grid: { vertLines: { color: COLORS.grid }, horzLines: { color: COLORS.grid } },
+    rightPriceScale: { borderColor: COLORS.border },
+    timeScale: { borderColor: COLORS.border },
+  });
+  const series = chart.addSeries(LWC.LineSeries, { color: COLORS.sma50, lineWidth: 2, priceLineVisible: false });
+  series.setData(hist.map((d) => ({ time: d.date, value: d.total_eur })));
+  const start = parseFloat(el.dataset.start);
+  if (!isNaN(start)) {
+    series.createPriceLine({ price: start, color: "#8b98a9", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "start" });
+  }
+  chart.timeScale().fitContent();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   loadRows();
   initDetailChart();
+  initPortfolioChart();
 });

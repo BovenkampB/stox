@@ -212,6 +212,47 @@ def external_links(symbol: str) -> list[dict]:
     ]
 
 
+# ---------------------------------------------------- fictief portfolio ---
+def portfolio_view(settings: Settings) -> dict:
+    """Huidige stand van het papertrading-portfolio, met live koersen in euro."""
+    from ..portfolio import Portfolio, price_in_eur, FEE_EUR
+
+    pf = Portfolio(settings.db_path)
+    name_of = {t.symbol: t.name for t in settings.tickers}
+    positions, holdings_value = [], 0.0
+    for p in pf.positions():
+        df = cache.get_history(p["symbol"], period="5d").history
+        native = float(df["Close"].iloc[-1]) if not df.empty else None
+        cur_eur = price_in_eur(p["symbol"], native) if native is not None else (
+            p["cost_eur"] / p["shares"] if p["shares"] else 0.0)
+        value = p["shares"] * cur_eur
+        holdings_value += value
+        cost = p["cost_eur"]
+        positions.append({
+            "symbol": p["symbol"], "name": name_of.get(p["symbol"], p["name"]),
+            "shares": p["shares"], "cost_eur": cost, "value_eur": value,
+            "pnl_eur": value - cost, "pnl_pct": ((value - cost) / cost * 100) if cost else 0.0,
+            "opened_at": p["opened_at"],
+        })
+    positions.sort(key=lambda x: -x["value_eur"])
+
+    cash = pf.cash()
+    start = pf.start_budget()
+    total = cash + holdings_value
+    trades = pf.trades(100)
+    history = pf.history()
+    started = pf.started_at()
+    pf.close()
+
+    return {
+        "start_budget": start, "cash": cash, "holdings_value": holdings_value,
+        "total": total, "return_eur": total - start,
+        "return_pct": ((total - start) / start * 100) if start else 0.0,
+        "positions": positions, "trades": trades, "history": history,
+        "started_at": started, "fee": FEE_EUR,
+    }
+
+
 # ------------------------------------------------- instapkans (drawdown) ---
 # Ruimere drempels dan de ETF-dip: losse aandelen/crypto zijn volatieler.
 ENTRY_LOOKBACK = 90                                   # ~top van de afgelopen maanden

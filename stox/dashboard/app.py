@@ -79,6 +79,10 @@ def create_app(settings: Settings | None = None) -> Flask:
             b.close()
         return render_template("report.html", r=data)
 
+    @app.route("/portfolio")
+    def portfolio():
+        return render_template("portfolio.html", p=service.portfolio_view(settings))
+
     @app.route("/logbook")
     def logbook():
         b = book()

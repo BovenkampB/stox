@@ -436,6 +436,18 @@ def cmd_daily(args) -> int:
             except Exception as exc:
                 console.print(f"[red]E-mail versturen mislukt:[/red] {exc}")
 
+    # 4. Papertrading: handel op de verse signalen (alleen bij een volledige run).
+    if not args.category:
+        try:
+            from .portfolio import Portfolio
+            pf = Portfolio(settings.db_path)
+            res = pf.run_trading(items)
+            pf.close()
+            console.print(f"[dim]Papertrading: {res['bought']} gekocht, {res['sold']} verkocht.[/dim]")
+        except Exception as exc:
+            log_error("papertrading", exc)
+            console.print(f"[red]Papertrading mislukt:[/red] {exc} [dim](zie data/stox.log)[/dim]")
+
     console.print()
     console.print(Panel(body, title="Dagelijkse samenvatting", border_style="cyan"))
     book.close()
@@ -660,6 +672,52 @@ def cmd_history(args) -> None:
     book.close()
 
 
+def _print_portfolio(pf, settings) -> None:
+    hist = pf.history()
+    total = hist[-1]["total_eur"] if hist else pf.cash()
+    start = pf.start_budget()
+    ret = total - start
+    console.print(Panel(
+        f"Startbudget : €{start:,.0f}\n"
+        f"Waarde      : €{total:,.2f}   ({ret:+,.2f} / {ret / start * 100:+.2f}%)\n"
+        f"Cash        : €{pf.cash():,.2f}\n"
+        f"Posities    : {len(pf.positions())}",
+        title="Fictief portfolio", border_style="cyan"))
+    positions = pf.positions()
+    if positions:
+        table = Table(title="Posities (op kostprijs)")
+        table.add_column("Symbool")
+        table.add_column("Aandelen", justify="right")
+        table.add_column("Ingelegd €", justify="right")
+        for p in positions:
+            table.add_row(p["symbol"], f"{p['shares']:.4f}", f"{p['cost_eur']:,.0f}")
+        console.print(table)
+
+
+def cmd_portfolio(args) -> int:
+    from .portfolio import Portfolio
+    settings = load_settings()
+    pf = Portfolio(settings.db_path)
+    if args.run:
+        book = Logbook(settings.db_path)
+        today = date.today().isoformat()
+        latest = {}
+        for r in book.all(limit=8000):
+            if r.created_at[:10] == today:
+                latest.setdefault(r.symbol, r)
+        book.close()
+        cat_of = {t.symbol: t.category for t in settings.tickers}
+        items = [_item_from_rec(r, cat_of) for r in latest.values()]
+        if not items:
+            console.print("[yellow]Geen aanbevelingen van vandaag om op te handelen.[/yellow]")
+        else:
+            res = pf.run_trading(items)
+            console.print(f"[green]Handelsronde:[/green] {res['bought']} gekocht, {res['sold']} verkocht.")
+    _print_portfolio(pf, settings)
+    pf.close()
+    return 0
+
+
 def cmd_dashboard(args) -> int:
     import threading
     import webbrowser
@@ -709,6 +767,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_src.add_argument("--limit", type=int, default=1,
                        help="Aantal recente aanbevelingen om te tonen (standaard 1).")
     p_src.set_defaults(func=cmd_sources)
+
+    p_pf = sub.add_parser("portfolio", help="Toon het fictieve papertrading-portfolio (of handel met --run).")
+    p_pf.add_argument("--run", action="store_true",
+                      help="Voer een handelsronde uit op de signalen van vandaag.")
+    p_pf.set_defaults(func=cmd_portfolio)
 
     p_dash = sub.add_parser("dashboard", help="Start het lokale Stoxxx-webdashboard (read-only).")
     p_dash.add_argument("--host", default="127.0.0.1")
