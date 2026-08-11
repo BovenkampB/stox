@@ -29,9 +29,13 @@ def fetch_history(symbol: str, period: str = "6mo", interval: str = "1d") -> Pri
     """
     ticker = yf.Ticker(symbol)
     hist = ticker.history(period=period, interval=interval, auto_adjust=True)
-    # Verwijder tijdzone-info voor eenvoudige opslag/vergelijking.
-    if not hist.empty and hist.index.tz is not None:
-        hist.index = hist.index.tz_localize(None)
+    if not hist.empty:
+        # Gooi rijen zonder slotkoers weg (bv. de nog-niet-geopende handelsdag bij
+        # EU-aandelen vroeg in de ochtend); anders is de laatste koers NaN.
+        hist = hist.dropna(subset=["Close"])
+        # Verwijder tijdzone-info voor eenvoudige opslag/vergelijking.
+        if not hist.empty and hist.index.tz is not None:
+            hist.index = hist.index.tz_localize(None)
     return PriceData(symbol=symbol, history=hist)
 
 
