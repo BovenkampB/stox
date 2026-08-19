@@ -20,6 +20,9 @@ koers — zo bouwt stox een track record op en leert het van eerdere inschatting
 - **Logboek** (SQLite): elke aanbeveling wordt vastgelegd met koers en tijdstip.
 - **Leerlus**: `evaluate` toetst verstreken aanbevelingen aan de echte koers en
   berekent je trefzekerheid; die track record voedt de volgende redenaties.
+- **Papertrading** (fase 3): een fictief portfolio dat automatisch handelt op
+  stox' eigen signalen, zodat je zonder risico ziet hoe de strategie het écht
+  zou hebben gedaan.
 
 Zonder API-sleutel draait stox in een **regelgebaseerde terugvalmodus** (alleen
 technische analyse), zodat je het meteen kunt uitproberen.
@@ -55,6 +58,9 @@ python -m stox dip
 # Volledige dagroutine: evalueer + analyseer alles + toon/mail een samenvatting
 python -m stox daily
 
+# Bekijk het fictieve papertrading-portfolio (of handel met --run)
+python -m stox portfolio
+
 # Toon de nieuwsbronnen achter de laatste aanbeveling voor een ticker
 python -m stox sources KTOS
 
@@ -84,6 +90,8 @@ het logboek — het draait geen nieuwe analyses en kost dus geen API-credits.
 - **Rapport** — trefzekerheid per signaal, categorie en horizon (vult zich zodra
   er evaluaties zijn).
 - **Logboek** — alle aanbevelingen.
+- **Portfolio** — het fictieve papertrading-portfolio: waardegrafiek, huidige
+  posities (met live koersen en rendement) en de volledige transactiehistorie.
 
 Opties: `--port`, `--host`, `--no-browser`. Draait op de Flask dev-server; voor
 een permanente opstelling (bijv. Raspberry Pi) kun je later een WSGI-server zoals
@@ -164,13 +172,34 @@ Voor automatische e-mailmeldingen:
 3. Plan dit commando in met Windows Taakplanner om automatisch te checken
    (bijv. 3× per handelsdag: 09:30, 13:00 en 17:00).
 
+## Fictief papertrading-portfolio
+
+`stox portfolio` houdt een **volledig fictief** portfolio bij (startbudget
+€100.000) dat automatisch handelt op stox' eigen koop-/verkoopsignalen — er
+gaat geen echt geld of broker aan te pas, het is puur om te zien hoe de
+strategie het over tijd zou hebben gedaan.
+
+De regels (zie [`stox/portfolio.py`](stox/portfolio.py)):
+
+- **Kopen** bij een KOPEN-signaal met minstens 55% zekerheid, voor ~€6.000 per
+  positie (maximaal ~16 posities tegelijk).
+- **Verkopen** bij een VERKOPEN-signaal op een positie die je aanhoudt.
+- **Aanhouden** in alle andere gevallen.
+- €3,50 transactiekosten per koop/verkoop; koersen in vreemde valuta worden
+  omgerekend naar euro (live wisselkoers via yfinance).
+
+Elke `stox daily`-run voert automatisch een handelsronde uit; met
+`python -m stox portfolio --run` kun je dat ook los draaien. Het dashboard
+toont de resultaten op de **Portfolio**-pagina (waardegrafiek, posities,
+transacties).
+
 ## Roadmap
 
 - **Fase 1 (nu):** data + grafiek-analyse + nieuws-redenatie + logboek + leerlus.
 - **Fase 2:** rijkere leerlus (patronen per aandeel/sector), betere nieuwsbronnen,
   eventueel een webdashboard met grafieken.
-- **Fase 3:** papertrading — een nep-portefeuille die de aanbevelingen volgt, zodat
-  je zonder risico ziet hoe een strategie het doet.
+- **Fase 3 (klaar):** papertrading — een fictief portfolio dat de aanbevelingen
+  volgt, zodat je zonder risico ziet hoe een strategie het doet.
 - **Fase 4:** optionele koppeling met een echte broker, met harde veiligheidsgrenzen
   (max bedrag, stop-loss, altijd handmatige bevestiging). Pas ná bewezen resultaten.
 
@@ -188,6 +217,7 @@ stox/
 │   ├── analysis/recommender.py  # orkestratie
 │   ├── logbook/store.py         # SQLite-logboek
 │   ├── logbook/evaluator.py     # leerlus / trefzekerheid
+│   ├── portfolio.py             # fictief papertrading-portfolio
 │   └── cli.py                   # command-line interface
 └── data/stox.db                 # logboek (wordt automatisch aangemaakt)
 ```
