@@ -46,10 +46,6 @@ a:hover { text-decoration: underline; }
 }
 .mainnav a:hover { color: var(--text); background: var(--panel); text-decoration: none; }
 .mainnav a.active { color: var(--text); background: var(--panel-2); }
-.model-badge {
-  margin-left: auto; color: var(--muted); font-size: .8rem;
-  border: 1px solid var(--border); padding: 4px 10px; border-radius: 20px;
-}
 
 /* ---- Layout ---- */
 main { max-width: 1180px; margin: 0 auto; padding: 28px; }
@@ -188,7 +184,6 @@ h2 .entry-val { font-size: .8rem; margin-left: 6px; }
 @media (max-width: 720px) {
   .topbar { flex-wrap: wrap; gap: 10px 16px; padding: 12px 16px; }
   .mainnav { order: 3; width: 100%; }
-  .model-badge { margin-left: auto; }
   main { padding: 18px 14px; }
   h1 { font-size: 1.4rem; }
   .detail-head { flex-wrap: wrap; gap: 10px; }
