@@ -91,21 +91,21 @@ het logboek — het draait geen nieuwe analyses en kost dus geen API-credits.
 - **Nieuws** — alle bronartikelen gesorteerd op de datum waarop ze zijn meegewogen.
 - **Rapport** — trefzekerheid per signaal, categorie en horizon (vult zich zodra
   er evaluaties zijn).
+
+![Rapport-pagina van het dashboard](images/dashboard-rapport.png)
+
 - **Logboek** — alle aanbevelingen.
 - **Portfolio** — het fictieve papertrading-portfolio: waardegrafiek, huidige
   posities (met live koersen en rendement) en de volledige transactiehistorie.
 
 <details>
-<summary>Meer schermafbeeldingen (Crypto, Nieuws, Rapport, Logboek)</summary>
+<summary>Meer schermafbeeldingen (Crypto, Nieuws, Logboek)</summary>
 
 **Crypto**
 ![Crypto-pagina van het dashboard](images/dashboard-crypto.png)
 
 **Nieuws**
 ![Nieuws-pagina van het dashboard](images/dashboard-nieuws.png)
-
-**Rapport**
-![Rapport-pagina van het dashboard](images/dashboard-rapport.png)
 
 **Logboek**
 ![Logboek-pagina van het dashboard](images/dashboard-logboek.png)
