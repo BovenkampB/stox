@@ -101,6 +101,10 @@ versleuteld en alleen bereikbaar voor je eigen apparaten.
 python -m stox dashboard --host <tailscale-ip-van-je-pc>
 ```
 
+```bash
+python -m stox dashboard --host 100.x.x.x --port 80
+```
+
 Open daarna op je tablet `http://<tailscale-ip-van-je-pc>:8000`. Door aan het
 Tailscale-IP te binden (i.p.v. `0.0.0.0`) is het dashboard alléén via je tailnet
 bereikbaar, niet via je gewone wifi/LAN.

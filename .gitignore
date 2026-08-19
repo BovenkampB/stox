@@ -4,6 +4,9 @@
 # Lokale Claude Code-instellingen
 .claude/
 
+# Persoonlijk opstart-script met eigen Tailscale-IP (niet delen)
+start-dashboard-tailscale.bat
+
 # Runtime data (logboek, cache)
 /data/
 *.db
