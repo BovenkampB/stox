@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Portfolio — Stoxxx{% endblock %}
+{% block content %}
+<section class="page">
+  <div class="page-head">
+    <h1>Fictief portfolio</h1>
+    <p class="sub">
+      Papertrading op stox' eigen signalen — gestart {{ p.started_at }},
+      €{{ '{:,.0f}'.format(p.start_budget) }} fictief budget,
+      €{{ '{:.2f}'.format(p.fee) }} kosten per transactie.
+      <b>Puur fictief, geen echte handel.</b>
+    </p>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat">
+      <span class="stat-num">€{{ '{:,.0f}'.format(p.total) }}</span>
+      <span class="stat-lbl">totale waarde</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num {{ 'ok' if p.return_eur >= 0 else 'bad' }}">
+        {{ '{:+,.0f}'.format(p.return_eur) }} €</span>
+      <span class="stat-lbl">rendement ({{ '{:+.2f}'.format(p.return_pct) }}%)</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num">€{{ '{:,.0f}'.format(p.cash) }}</span>
+      <span class="stat-lbl">cash</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num">€{{ '{:,.0f}'.format(p.holdings_value) }}</span>
+      <span class="stat-lbl">in {{ p.positions|length }} posities</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Waarde-ontwikkeling</h2>
+    <div id="pf-chart" data-start="{{ p.start_budget }}"></div>
+    <script type="application/json" id="pf-history">{{ p.history|tojson }}</script>
+  </div>
+
+  <div class="panel">
+    <h2>Posities</h2>
+    {% if p.positions %}
+    <div class="table-wrap">
+      <table class="grid">
+        <thead><tr>
+          <th>Aandeel</th><th class="num">Aandelen</th><th class="num">Ingelegd</th>
+          <th class="num">Waarde nu</th><th class="num">Rendement</th>
+        </tr></thead>
+        <tbody>
+          {% for pos in p.positions %}
+          <tr class="row-link" onclick="location.href='{{ url_for('stock', symbol=pos.symbol) }}'">
+            <td class="name"><a href="{{ url_for('stock', symbol=pos.symbol) }}">{{ pos.symbol }}</a>
+              <span class="ticker">{{ pos.name }}</span></td>
+            <td class="num">{{ '{:.4f}'.format(pos.shares) }}</td>
+            <td class="num">€{{ '{:,.0f}'.format(pos.cost_eur) }}</td>
+            <td class="num">€{{ '{:,.0f}'.format(pos.value_eur) }}</td>
+            <td class="num {{ 'ok' if pos.pnl_eur >= 0 else 'bad' }}">
+              {{ '{:+,.0f}'.format(pos.pnl_eur) }} € ({{ '{:+.1f}'.format(pos.pnl_pct) }}%)</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="empty">Nog geen posities — het portfolio wacht op koopsignalen (vandaag staat alles op 'aanhouden').
+      Zodra er een KOPEN-signaal met voldoende zekerheid verschijnt, opent het automatisch een positie.</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>Transacties</h2>
+    {% if p.trades %}
+    <div class="table-wrap">
+      <table class="grid">
+        <thead><tr>
+          <th>Datum</th><th>Actie</th><th>Aandeel</th><th class="num">Aandelen</th>
+          <th class="num">Koers €</th><th class="num">Bedrag €</th><th class="num">Kosten</th>
+        </tr></thead>
+        <tbody>
+          {% for tr in p.trades %}
+          <tr>
+            <td class="muted">{{ tr.ts[:16] }}</td>
+            <td><span class="badge {{ 'sig-buy' if tr.action == 'buy' else 'sig-sell' }}">
+              {{ 'KOOP' if tr.action == 'buy' else 'VERKOOP' }}</span></td>
+            <td class="name">{{ tr.symbol }}</td>
+            <td class="num">{{ '{:.4f}'.format(tr.shares) }}</td>
+            <td class="num">{{ '{:,.2f}'.format(tr.price_eur) }}</td>
+            <td class="num">{{ '{:,.0f}'.format(tr.amount_eur) }}</td>
+            <td class="num muted">{{ '{:.2f}'.format(tr.fee_eur) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="empty">Nog geen transacties.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
