@@ -74,6 +74,8 @@ python -m stox dashboard
 `http://127.0.0.1:8000` (opent automatisch je browser). Het toont alle data uit
 het logboek — het draait geen nieuwe analyses en kost dus geen API-credits.
 
+![Overzicht-pagina van het dashboard](images/dashboard-overzicht.png)
+
 - **Overzicht** — alle getrackte aandelen, gesorteerd op koopadvies, met een
   sparkline per aandeel en een **Instapkans**-kolom (hoe ver onder de recente
   top: lichte/flinke/grote terugval — objectief, los van het koop/verkoopsignaal);
@@ -92,6 +94,23 @@ het logboek — het draait geen nieuwe analyses en kost dus geen API-credits.
 - **Logboek** — alle aanbevelingen.
 - **Portfolio** — het fictieve papertrading-portfolio: waardegrafiek, huidige
   posities (met live koersen en rendement) en de volledige transactiehistorie.
+
+<details>
+<summary>Meer schermafbeeldingen (Crypto, Nieuws, Rapport, Logboek)</summary>
+
+**Crypto**
+![Crypto-pagina van het dashboard](images/dashboard-crypto.png)
+
+**Nieuws**
+![Nieuws-pagina van het dashboard](images/dashboard-nieuws.png)
+
+**Rapport**
+![Rapport-pagina van het dashboard](images/dashboard-rapport.png)
+
+**Logboek**
+![Logboek-pagina van het dashboard](images/dashboard-logboek.png)
+
+</details>
 
 Opties: `--port`, `--host`, `--no-browser`. Draait op de Flask dev-server; voor
 een permanente opstelling (bijv. Raspberry Pi) kun je later een WSGI-server zoals
@@ -187,6 +206,8 @@ De regels (zie [`stox/portfolio.py`](stox/portfolio.py)):
 - **Aanhouden** in alle andere gevallen.
 - €3,50 transactiekosten per koop/verkoop; koersen in vreemde valuta worden
   omgerekend naar euro (live wisselkoers via yfinance).
+
+![Portfolio-pagina van het dashboard](images/dashboard-portfolio.png)
 
 Elke `stox daily`-run voert automatisch een handelsronde uit; met
 `python -m stox portfolio --run` kun je dat ook los draaien. Het dashboard
